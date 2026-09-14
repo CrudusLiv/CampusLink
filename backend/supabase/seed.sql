@@ -1,0 +1,2 @@
+-- Seed data for local development.
+-- Runs automatically on `supabase db reset` (see db.seed.sql_paths in config.toml).
