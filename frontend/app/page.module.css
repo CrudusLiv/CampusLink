@@ -1,0 +1,307 @@
+/* --- Landing Page: Shared Base --- */
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  color: #000000;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* --- Landing Page: Header Section --- */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.logo {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.navButtons {
+  display: flex;
+  gap: 1rem;
+}
+
+/* --- Landing Page: General Buttons --- */
+.btnOutline {
+  padding: 0.5rem 1.25rem;
+  border: 1px solid #000000;
+  background-color: transparent;
+  color: #000000;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.btnFilled {
+  padding: 0.5rem 1.25rem;
+  border: 1px solid #000000;
+  background-color: #111827; 
+  color: #ffffff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+/* --- Landing Page: Main Content Section --- */
+.main {
+  flex: 1;
+  padding: 4rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* --- Landing Page: Hero Section --- */
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+  margin-bottom: 5rem;
+}
+
+@media (min-width: 768px) {
+  .hero {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+.heroText {
+  flex: 1;
+}
+
+.heroTitle {
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: 1.5rem;
+  letter-spacing: -0.02em;
+}
+
+.heroDesc {
+  font-size: 1.125rem;
+  color: #4b5563;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.heroButtons {
+  display: flex;
+  gap: 1rem;
+}
+
+.heroImagePlaceholder {
+  flex: 1;
+  background-color: #f3f4f6;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  height: 350px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 0.875rem;
+}
+
+/* --- Landing Page: Card Section --- */
+.features {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .features {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.card {
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+}
+
+.cardTitle {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.cardDesc {
+  color: #4b5563;
+  margin-bottom: 2rem;
+  flex: 1;
+  line-height: 1.5;
+  font-size: 0.875rem;
+}
+
+.cardLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #000000;
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cardIcon {
+  background-color: #f3f4f6;
+  border: 1px solid #e5e5e5;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- Landing Page: Footer Section --- */
+.footer {
+  text-align: center;
+  padding: 2rem;
+  color: #9ca3af;
+  font-size: 0.75rem;
+  border-top: 1px solid #e5e5e5;
+}
+
+/* --- Dashboard: Shared Layout --- */
+.layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f9fafb;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #111827;
+}
+
+.layout .logo {
+  margin-bottom: 2.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mainContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.topHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #e4e4e7;
+  background-color: #ffffff;
+}
+
+.headerTitle { font-size: 1.25rem; font-weight: 700; }
+.headerIcons { display: flex; align-items: center; gap: 1.5rem; }
+.iconPlaceholder { font-size: 0.75rem; color: #71717a; cursor: pointer; }
+.avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background-color: #e4e4e7; display: flex; align-items: center; justify-content: center;
+  font-size: 0.75rem; border: 1px solid #d4d4d8; cursor: pointer;
+}
+
+.contentBody {
+  padding: 2rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.navMenu { display: flex; flex-direction: column; gap: 0.5rem; flex: 1; }
+
+/* --- Dashboard: Student View --- */
+.sidebarStudent {
+  display: none; width: 260px; background-color: #27272a;
+  color: #ffffff; padding: 1.5rem; flex-direction: column;
+}
+@media (min-width: 768px) { .sidebarStudent { display: flex; } }
+
+.logoIconDark { width: 24px; height: 24px; background-color: #ffffff; border-radius: 4px; }
+.sidebarSection { font-size: 0.75rem; color: #a1a1aa; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+.navItemStudent { padding: 0.75rem 1rem; border-radius: 0.375rem; color: #d4d4d8; text-decoration: none; font-size: 0.875rem; font-weight: 500; }
+.navItemStudentActive { background-color: #3f3f46; color: #ffffff; }
+.logout { margin-top: auto; color: #a1a1aa; font-size: 0.875rem; cursor: pointer; padding: 0.75rem 1rem; }
+.logoutStudent { color: #a1a1aa; }
+
+.actionButtons { display: flex; gap: 1rem; margin-bottom: 2.5rem; }
+.btnPrimary { background-color: #3f3f46; color: #ffffff; padding: 0.75rem 2rem; border-radius: 0.375rem; font-weight: 600; font-size: 0.875rem; border: none; cursor: pointer; }
+.btnSecondary { background-color: #ffffff; color: #3f3f46; padding: 0.75rem 2rem; border-radius: 0.375rem; font-weight: 600; font-size: 0.875rem; border: 1px solid #d4d4d8; cursor: pointer; }
+
+.studentGrid { display: grid; grid-template-columns: 1fr; gap: 2rem; }
+@media (min-width: 1024px) { .studentGrid { grid-template-columns: 2fr 1fr; } }
+
+.sectionTitle { font-size: 1.125rem; font-weight: 700; margin-bottom: 1.25rem; }
+.sectionSubtitle { font-size: 0.75rem; color: #71717a; margin-top: -0.75rem; margin-bottom: 1.25rem; }
+
+.requestList { display: flex; flex-direction: column; gap: 1rem; }
+.requestCard { background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 0.5rem; padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+.requestInfo h4 { margin: 0 0 0.375rem 0; font-size: 0.875rem; font-weight: 700; }
+.requestInfo p { margin: 0; font-size: 0.75rem; color: #71717a; }
+
+.badge { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+.badgePending { background-color: #f4f4f5; color: #52525b; border: 1px solid #d4d4d8; }
+.badgeAccepted { background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }
+.badgeCompleted { background-color: #f4f4f5; color: #52525b; border: 1px solid #d4d4d8; }
+
+.volunteerList { display: flex; flex-direction: column; gap: 1rem; }
+.volunteerCard { background-color: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 0.5rem; padding: 1.25rem; display: flex; justify-content: space-between; align-items: center; }
+.volunteerInfo { display: flex; align-items: center; gap: 1rem; }
+.volunteerAvatar { width: 44px; height: 44px; border-radius: 50%; background-color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; border: 1px solid #d4d4d8; }
+.volunteerText h4 { margin: 0 0 0.25rem 0; font-size: 0.875rem; font-weight: 700; }
+.volunteerText p { margin: 0; font-size: 0.75rem; color: #71717a; }
+.btnAction { background-color: #ffffff; border: 1px solid #3f3f46; color: #3f3f46; padding: 0.375rem 1rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 600; }
+
+.mobileNav { display: flex; justify-content: space-around; background-color: #ffffff; border-top: 1px solid #e4e4e7; padding: 1rem 0; position: sticky; bottom: 0; width: 100%; }
+@media (min-width: 768px) { .mobileNav { display: none; } }
+.mobileNavItem { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: #71717a; }
+.mobileNavIcon { width: 20px; height: 20px; background-color: #e4e4e7; border-radius: 4px; }
+
+/* --- Dashboard: Admin View --- */
+.sidebarAdmin {
+  display: none; width: 260px; background-color: #f8fafc;
+  color: #0f172a; padding: 1.5rem; flex-direction: column; border-right: 1px solid #e2e8f0;
+}
+@media (min-width: 768px) { .sidebarAdmin { display: flex; } }
+
+.logoIconLight { width: 24px; height: 24px; background-color: #cbd5e1; border-radius: 4px; border: 1px solid #94a3b8; }
+.sidebarSectionAdmin { font-size: 0.75rem; color: #64748b; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+.navItemAdmin { padding: 0.75rem 1rem; border-radius: 0.375rem; color: #475569; text-decoration: none; font-size: 0.875rem; font-weight: 500; }
+.navItemAdminActive { background-color: #334155; color: #ffffff; }
+.logoutAdmin { margin-top: auto; font-size: 0.875rem; cursor: pointer; padding: 0.75rem 1rem; color: #64748b; }
+
+.metricsGrid { display: grid; grid-template-columns: repeat(1, 1fr); gap: 1.5rem; margin-bottom: 1.5rem; }
+@media (min-width: 768px) { .metricsGrid { grid-template-columns: repeat(3, 1fr); } }
+.metricCard { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 2rem 1.5rem; text-align: center; font-size: 0.875rem; font-weight: 500; color: #334155; }
+
+.adminMiddleGrid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+@media (min-width: 1024px) { .adminMiddleGrid { grid-template-columns: 2fr 1fr; } }
+.chartPlaceholder { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; min-height: 320px; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 0.875rem; }
+
+.attentionList { display: flex; flex-direction: column; gap: 1rem; }
+.attentionCard { border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.875rem; font-weight: 500; color: #334155; }
+.attentionBadge { background-color: #e2e8f0; padding: 0.25rem 1rem; border-radius: 9999px; font-size: 0.75rem; color: #475569; }
+
+.tableContainer { border: 1px solid #e2e8f0; border-radius: 0.5rem; overflow-x: auto; background-color: #ffffff; }
+.activityTable { width: 100%; border-collapse: collapse; text-align: left; }
+.activityTable th { background-color: #e2e8f0; padding: 0.875rem 1.25rem; font-size: 0.875rem; font-weight: 700; color: #334155; }
+.activityTable td { padding: 1.25rem; border-top: 1px solid #e2e8f0; font-size: 0.875rem; color: #475569; }
+.typeBadge { background-color: #e2e8f0; padding: 0.25rem 1rem; border-radius: 9999px; font-size: 0.75rem; border: 1px solid #cbd5e1; }
