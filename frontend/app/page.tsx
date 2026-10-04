@@ -1,4 +1,5 @@
 import styles from './page.module.css';
+import Link from 'next/link';
 
 export default function LandingPage() {
   return (
@@ -8,7 +9,7 @@ export default function LandingPage() {
         <div className={styles.logo}>CampusLink</div>
         <div className={styles.navButtons}>
           <button className={styles.btnOutline}>Log In</button>
-          <button className={styles.btnFilled}>Register</button>
+          <Link href="/register" className={styles.btnFilled}>Register</Link>
         </div>
       </header>
 
@@ -23,7 +24,7 @@ export default function LandingPage() {
               CampusLink connects HELP University students with peer volunteers for academic support, campus orientation, and more.
             </p>
             <div className={styles.heroButtons}>
-              <button className={styles.btnFilled}>Get Started</button>
+              <Link href="/register" className={styles.btnFilled}>Get Started</Link>
               <button className={styles.btnOutline}>Log In</button>
             </div>
           </div>
