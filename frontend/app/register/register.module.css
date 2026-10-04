@@ -128,3 +128,13 @@
   color: #111827;
   font-weight: 600;
 }
+
+.serverError {
+  margin: 0 0 1rem 0;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  background-color: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+}
