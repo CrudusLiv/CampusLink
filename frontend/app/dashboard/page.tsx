@@ -36,7 +36,7 @@ export default function Dashboard() {
         <aside className={styles.sidebarAdmin}>
           <div className={styles.logo}>
             <div className={styles.logoIconLight}></div>
-            App Name
+            CampusLink
           </div>
           <div className={styles.sidebarSectionAdmin}>ADMIN</div>
           <nav className={styles.navMenu}>
