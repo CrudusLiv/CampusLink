@@ -28,7 +28,7 @@ export default function Dashboard() {
             <a href="#" className={styles.navItemStudent}>My Support Requests</a>
             <a href="#" className={styles.navItemStudent}>My Support Sessions</a>
             <a href="#" className={styles.navItemStudent}>Support History</a>
-            <a href="#" className={styles.navItemStudent}>My Profile</a>
+            <a href="/profile" className={styles.navItemStudent}>My Profile</a>
           </nav>
           <div className={`${styles.logout} ${styles.logoutStudent}`}>Log out</div>
         </aside>
