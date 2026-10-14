@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import LogoutButton from "@/components/auth/LogoutButton";
 import styles from "./profile.module.css";
+import BecomeVolunteerCard from "@/components/volunteer/BecomeVolunteerCard";
 
 type ProfileForm = {
   name: string;
@@ -186,6 +187,7 @@ export default function ProfilePage() {
             </button>
           </form>
         </div>
+        <BecomeVolunteerCard userId={profile.user_id} />
       </main>
     </div>
   );

@@ -1,0 +1,219 @@
+/* Same colours and fonts as the profile page */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f9fafb;
+  color: #111827;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 2rem;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e4e4e7;
+}
+
+.logo {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+  text-decoration: none;
+}
+
+.backLink {
+  font-size: 0.875rem;
+  color: #4b5563;
+  text-decoration: none;
+}
+
+.backLink:hover {
+  color: #111827;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 3rem 1rem;
+}
+
+.card {
+  width: 100%;
+  max-width: 760px;
+  background-color: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  padding: 2rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0 0 0.5rem 0;
+}
+
+.subtitle {
+  font-size: 0.875rem;
+  color: #4b5563;
+  margin: 0 0 1.5rem 0;
+  line-height: 1.5;
+}
+
+.notice {
+  font-size: 0.875rem;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+.notice a {
+  color: #111827;
+  font-weight: 600;
+}
+
+.section {
+  margin-bottom: 2rem;
+}
+
+.sectionTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem 0;
+}
+
+.hint {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin: -0.25rem 0 0.75rem 0;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tag {
+  padding: 0.5rem 0.875rem;
+  border: 1px solid #d4d4d8;
+  border-radius: 9999px;
+  background-color: #ffffff;
+  color: #3f3f46;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.tag:hover {
+  border-color: #111827;
+}
+
+.tagSelected {
+  background-color: #111827;
+  border-color: #111827;
+  color: #ffffff;
+}
+
+.gridWrap {
+  overflow-x: auto;
+}
+
+.grid {
+  border-collapse: separate;
+  border-spacing: 4px;
+  font-size: 0.75rem;
+}
+
+.grid th {
+  font-weight: 600;
+  color: #4b5563;
+  padding: 0 0.25rem;
+}
+
+.timeHead {
+  width: 3.5rem;
+}
+
+.timeLabel {
+  text-align: right;
+  padding-right: 0.5rem !important;
+  font-weight: 500 !important;
+  white-space: nowrap;
+}
+
+.cell {
+  display: block;
+  width: 3.5rem;
+  height: 1.75rem;
+  border: 1px solid #e4e4e7;
+  border-radius: 4px;
+  background-color: #f4f4f5;
+  cursor: pointer;
+}
+
+.cell:hover {
+  border-color: #111827;
+}
+
+.cellSelected {
+  background-color: #16a34a;
+  border-color: #15803d;
+}
+
+.cell:focus-visible,
+.tag:focus-visible,
+.submit:focus-visible {
+  outline: 2px solid #111827;
+  outline-offset: 2px;
+}
+
+.error {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.75rem;
+  color: #dc2626;
+}
+
+.success {
+  margin: 0 0 1rem 0;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  background-color: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+  border-radius: 6px;
+}
+
+.serverError {
+  margin: 0 0 1rem 0;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  background-color: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+}
+
+.submit {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #111827;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.submit:hover {
+  background-color: #1f2937;
+}
+
+.submit:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
