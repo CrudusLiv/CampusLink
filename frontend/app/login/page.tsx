@@ -97,6 +97,7 @@ export default function LoginPage() {
             <button type="submit" className={styles.submit} disabled={loading}>
               {loading ? "Logging in..." : "Log in"}
             </button>
+            <Link href="/forgot-password" className={styles.forgotLink}>Forgot password?</Link>
           </form>
 
           <p className={styles.switch}>
