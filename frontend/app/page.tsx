@@ -8,7 +8,7 @@ export default function LandingPage() {
       <header className={styles.header}>
         <div className={styles.logo}>CampusLink</div>
         <div className={styles.navButtons}>
-          <button className={styles.btnOutline}>Log In</button>
+             <Link href="/login" className={styles.btnOutline}>Log In</Link>
           <Link href="/register" className={styles.btnFilled}>Register</Link>
         </div>
       </header>
@@ -25,7 +25,7 @@ export default function LandingPage() {
             </p>
             <div className={styles.heroButtons}>
               <Link href="/register" className={styles.btnFilled}>Get Started</Link>
-              <button className={styles.btnOutline}>Log In</button>
+                 <Link href="/login" className={styles.btnOutline}>Log In</Link>
             </div>
           </div>
           
