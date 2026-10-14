@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import styles from '../page.module.css';
+import LogoutButton from "@/components/auth/LogoutButton";
 
 export default function Dashboard() {
   const [role, setRole] = useState<'student' | 'admin'>('admin');
@@ -30,7 +31,7 @@ export default function Dashboard() {
             <a href="#" className={styles.navItemStudent}>Support History</a>
             <a href="#" className={styles.navItemStudent}>My Profile</a>
           </nav>
-          <div className={`${styles.logout} ${styles.logoutStudent}`}>Log out</div>
+          <LogoutButton className={`${styles.logout} ${styles.logoutStudent}`} />
         </aside>
       ) : (
         <aside className={styles.sidebarAdmin}>
@@ -43,7 +44,7 @@ export default function Dashboard() {
             <a href="#" className={`${styles.navItemAdmin} ${styles.navItemAdminActive}`}>Overview</a>
             <a href="#" className={styles.navItemAdmin}>User Registrations</a>
           </nav>
-          <div className={`${styles.logout} ${styles.logoutAdmin}`}>Log out</div>
+          <LogoutButton className={`${styles.logout} ${styles.logoutAdmin}`} />
         </aside>
       )}
 
