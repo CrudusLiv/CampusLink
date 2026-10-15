@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
           {sent ? (
             <p className={styles.success}>
               If an account exists for {email.trim().toLowerCase()}, we&apos;ve sent a password reset link
-              to it. The link expires in 15 minutes.
+              to it. The link expires in 5 minutes.
             </p>
           ) : (
             <>
