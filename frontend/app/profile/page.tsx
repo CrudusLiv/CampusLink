@@ -5,10 +5,9 @@
 // Name, phone, faculty and bio can be edited; student ID and email are locked.
 
 import { useEffect, useState, FormEvent } from "react";
-import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/lib/useCurrentUser";
-import LogoutButton from "@/components/auth/LogoutButton";
+import AppShell from "@/components/layout/AppShell";
 import styles from "./profile.module.css";
 import BecomeVolunteerCard from "@/components/volunteer/BecomeVolunteerCard";
 
@@ -104,22 +103,10 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <Link href="/dashboard" className={styles.logo}>
-          CampusLink
-        </Link>
-        <div className={styles.headerLinks}>
-          <Link href="/dashboard" className={styles.backLink}>
-            ← Back to dashboard
-          </Link>
-          <LogoutButton className={styles.logoutButton} />
-        </div>
-      </header>
-
-      <main className={styles.main}>
-        <div className={styles.card}>
-          <h1 className={styles.title}>My Profile</h1>
+    <AppShell title="My Profile">
+      <div className={styles.page}>
+        <main className={styles.main}>
+          <div className={styles.card}>
           <p className={styles.subtitle}>
             Keep your details up to date so other students and volunteers know who you are.
           </p>
@@ -186,10 +173,11 @@ export default function ProfilePage() {
               {saving ? "Saving..." : "Save changes"}
             </button>
           </form>
-        </div>
-        <BecomeVolunteerCard userId={profile.user_id} />
-      </main>
-    </div>
+          </div>
+          <BecomeVolunteerCard userId={profile.user_id} />
+        </main>
+      </div>
+    </AppShell>
   );
 }
 

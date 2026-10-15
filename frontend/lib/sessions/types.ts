@@ -13,7 +13,10 @@ export type SessionView = {
   scheduledDatetime: string; // ISO, UTC
   supportMode: SupportMode;
   meetingLink: string | null;
-  status: 'Scheduled';
+  status: 'Scheduled' | 'Completed' | 'Cancelled';
+  rating?: number;
+  feedback?: string;
+  rescheduleNote?: string;
   requester: Participant; // Help Seeker
   volunteer: Participant;
   other: Participant; // whichever of the two is NOT the viewer

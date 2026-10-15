@@ -1,67 +1,17 @@
 /* Same colours and fonts as the register and login pages */
 
 .page {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background-color: #f9fafb;
+  min-height: 100%;
   color: #111827;
   font-family: system-ui, -apple-system, sans-serif;
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.25rem 2rem;
-  background-color: #ffffff;
-  border-bottom: 1px solid #e4e4e7;
-}
-
-.logo {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #111827;
-  text-decoration: none;
-}
-
-.headerLinks {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-}
-
-.backLink {
-  font-size: 0.875rem;
-  color: #4b5563;
-  text-decoration: none;
-}
-
-.backLink:hover {
-  color: #111827;
-}
-
-.logoutButton {
-  padding: 0.5rem 0.875rem;
-  font-size: 0.875rem;
-  background: none;
-  border: 1px solid #d4d4d8;
-  border-radius: 6px;
-  color: #111827;
-  cursor: pointer;
-}
-
-.logoutButton:hover {
-  background-color: #f4f4f5;
-}
-
 .main {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
-  padding: 3rem 1rem;
+  gap: 1.5rem;
+  padding: 1.5rem 1rem 3rem;
 }
 
 .card {
@@ -71,12 +21,6 @@
   border: 1px solid #e4e4e7;
   border-radius: 8px;
   padding: 2rem;
-}
-
-.title {
-  font-size: 1.5rem;
-  font-weight: 800;
-  margin: 0 0 0.5rem 0;
 }
 
 .subtitle {

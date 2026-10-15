@@ -8,6 +8,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ReactNode } from "react";
 import LogoutButton from "@/components/auth/LogoutButton";
+import { useVolunteerDashboardView } from "@/components/dashboard/VolunteerViewContext";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import styles from "./AppShell.module.css";
 
@@ -15,31 +16,53 @@ type Item = { label: string; href?: string };
 
 const STUDENT_NAV: Item[] = [
   { label: "Dashboard", href: "/dashboard" },
-  { label: "Ask for Support" },
-  { label: "Volunteer List" },
-  { label: "My Support Requests" },
+  { label: "Ask for Support", href: "/sessions/ask-for-support" },
+  { label: "Volunteer List", href: "/volunteer-lists" },
+  { label: "My Support Requests", href: "/support-requests" },
   { label: "My Support Sessions", href: "/sessions" },
-  { label: "Support History" },
+  { label: "Support History", href: "/support-history" },
   { label: "My Profile", href: "/profile" },
 ];
 const ADMIN_NAV: Item[] = [{ label: "Overview", href: "/dashboard" }, { label: "User Registrations" }];
+const VOLUNTEER_NAV: Item[] = [
+  { label: "Dashboard", href: "/dashboard" },
+  { label: "Incoming Requests", href: "/volunteer/requests" },
+  { label: "My Sessions", href: "/volunteer/sessions" },
+  { label: "Skills & Availability", href: "/volunteer/setup" },
+  { label: "My History", href: "/volunteer/history" },
+  { label: "My Profile", href: "/profile" },
+];
 const STUDENT_TABS: Item[] = [
   { label: "Home", href: "/dashboard" },
-  { label: "Ask" },
-  { label: "Requests" },
+  { label: "Ask", href: "/sessions/ask-for-support" },
+  { label: "Requests", href: "/support-requests" },
   { label: "Sessions", href: "/sessions" },
   { label: "Profile", href: "/profile" },
 ];
 const ADMIN_TABS: Item[] = [{ label: "Overview", href: "/dashboard" }, { label: "Registrations" }];
+const VOLUNTEER_TABS: Item[] = [
+  { label: "Home", href: "/dashboard" },
+  { label: "Requests", href: "/volunteer/requests" },
+  { label: "Sessions", href: "/volunteer/sessions" },
+  { label: "Profile", href: "/profile" },
+];
 
 const initials = (name: string) =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join("");
 
 export default function AppShell({ title, children }: { title: string; children: ReactNode }) {
   const { profile } = useCurrentUser();
+  const { view } = useVolunteerDashboardView();
   const pathname = usePathname();
   const admin = profile?.role === "admin";
-  const isActive = (href?: string) => !!href && (pathname === href || pathname.startsWith(href + "/"));
+  const volunteer = !admin && view === "volunteer";
+  const navItems = admin ? ADMIN_NAV : volunteer ? VOLUNTEER_NAV : STUDENT_NAV;
+  const tabItems = admin ? ADMIN_TABS : volunteer ? VOLUNTEER_TABS : STUDENT_TABS;
+  const isActive = (href?: string) =>
+    !!href &&
+    (pathname === href ||
+      (href === "/sessions" && pathname === "/sessions/schedule") ||
+      (pathname.startsWith(href + "/") && pathname !== "/sessions/ask-for-support"));
 
   function renderItem(item: Item, base: string, activeClass: string) {
     if (!item.href) {
@@ -69,9 +92,9 @@ export default function AppShell({ title, children }: { title: string; children:
           <span className={styles.logoIcon} aria-hidden="true" />
           CampusLink
         </Link>
-        <div className={styles.section}>{admin ? "Admin" : "Student"}</div>
+        <div className={styles.section}>{admin ? "Admin" : volunteer ? "Volunteer" : "Student"}</div>
         <nav className={styles.nav} aria-label="Main">
-          {(admin ? ADMIN_NAV : STUDENT_NAV).map((i) => renderItem(i, styles.navItem, styles.navItemActive))}
+          {navItems.map((i) => renderItem(i, styles.navItem, styles.navItemActive))}
         </nav>
         <LogoutButton className={styles.logout} />
       </aside>
@@ -92,7 +115,7 @@ export default function AppShell({ title, children }: { title: string; children:
       </div>
 
       <nav className={styles.tabs} aria-label="Main">
-        {(admin ? ADMIN_TABS : STUDENT_TABS).map((i) => renderItem(i, styles.tab, styles.tabActive))}
+        {tabItems.map((i) => renderItem(i, styles.tab, styles.tabActive))}
       </nav>
     </div>
   );

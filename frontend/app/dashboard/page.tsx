@@ -3,13 +3,22 @@
 import styles from "../page.module.css";
 import AppShell from "@/components/layout/AppShell";
 import { useCurrentUser } from "@/lib/useCurrentUser";
+import { useVolunteerDashboardView } from "@/components/dashboard/VolunteerViewContext";
+import VolunteerDashboard from "@/components/dashboard/VolunteerDashboard";
+import StudentDashboard from "@/components/dashboard/StudentDashboard";
 
 export default function Dashboard() {
   const { profile, loading } = useCurrentUser();
+  const { view } = useVolunteerDashboardView();
   // Role comes from the signed-in user (public.users.role), not a toggle
   const role = profile?.role === "admin" ? "admin" : "student";
 
   if (loading) return <AppShell title="Dashboard">{null}</AppShell>;
+
+  if (role === "student" && view === "volunteer") {
+    return <AppShell title="Dashboard"><VolunteerDashboard /></AppShell>;
+  }
+  if (role === "student") return <AppShell title="Dashboard"><StudentDashboard /></AppShell>;
 
   return (
     <AppShell title="Dashboard">

@@ -19,7 +19,9 @@ export function UpcomingSessions({ preview }: { preview?: PreviewState }) {
     let live = true;
     fetchUpcoming(preview)
       .then((list) => {
-        const sessions = [...list].sort((a, b) => a.scheduledDatetime.localeCompare(b.scheduledDatetime)); // soonest first
+        const sessions = list
+          .filter((session) => session.status === 'Scheduled')
+          .sort((a, b) => a.scheduledDatetime.localeCompare(b.scheduledDatetime)); // soonest first
         if (live) setState({ status: 'ready', sessions, now: Date.now() });
       })
       .catch(() => live && setState({ status: 'error' }));
