@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import AppShell from '@/components/layout/AppShell';
 import { UpcomingSessions } from '@/components/sessions/UpcomingSessions';
 import s from '@/components/sessions/sessions.module.css';
 
@@ -9,15 +9,11 @@ export default async function SessionsPage({ searchParams }: { searchParams: Pro
   const { state } = await searchParams; // UI phase only: ?state=empty|error previews those states
   const preview = state === 'empty' || state === 'error' ? state : undefined;
   return (
-    <div className={s.page}>
-      <header className={s.pageHeader}>
-        <Link className={s.backLink} href="/dashboard">← Dashboard</Link>
-        <h1 className={s.pageTitle}>My Support Sessions</h1>
-      </header>
+    <AppShell title="My Support Sessions">
       <main className={s.content}>
         <h2 className={s.sectionTitle}>Upcoming</h2>
         <UpcomingSessions preview={preview} />
       </main>
-    </div>
+    </AppShell>
   );
 }

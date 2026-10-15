@@ -1,72 +1,18 @@
 "use client";
 
-import { useState } from 'react';
-import styles from '../page.module.css';
-import LogoutButton from "@/components/auth/LogoutButton";
+import styles from "../page.module.css";
+import AppShell from "@/components/layout/AppShell";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 export default function Dashboard() {
-  const [role, setRole] = useState<'student' | 'admin'>('admin');
+  const { profile, loading } = useCurrentUser();
+  // Role comes from the signed-in user (public.users.role), not a toggle
+  const role = profile?.role === "admin" ? "admin" : "student";
 
-  const toggleRole = () => {
-    setRole(role === 'student' ? 'admin' : 'student');
-  };
+  if (loading) return <AppShell title="Dashboard">{null}</AppShell>;
 
   return (
-    <div className={styles.layout}>
-      
-      {/* Sidebar - Conditional Rendering */}
-      {role === 'student' ? (
-        <aside className={styles.sidebarStudent}>
-          <div className={styles.logo}>
-            <div className={styles.logoIconDark}></div>
-            CampusLink
-          </div>
-          <div className={styles.sidebarSection}>STUDENT</div>
-          <nav className={styles.navMenu}>
-            <a href="#" className={`${styles.navItemStudent} ${styles.navItemStudentActive}`}>Dashboard</a>
-            <a href="#" className={styles.navItemStudent}>Ask for Support</a>
-            <a href="#" className={styles.navItemStudent}>Volunteer List</a>
-            <a href="#" className={styles.navItemStudent}>My Support Requests</a>
-            <a href="#" className={styles.navItemStudent}>My Support Sessions</a>
-            <a href="#" className={styles.navItemStudent}>Support History</a>
-            <a href="/profile" className={styles.navItemStudent}>My Profile</a>
-          </nav>
-          <LogoutButton className={`${styles.logout} ${styles.logoutStudent}`} />
-        </aside>
-      ) : (
-        <aside className={styles.sidebarAdmin}>
-          <div className={styles.logo}>
-            <div className={styles.logoIconLight}></div>
-            CampusLink
-          </div>
-          <div className={styles.sidebarSectionAdmin}>ADMIN</div>
-          <nav className={styles.navMenu}>
-            <a href="#" className={`${styles.navItemAdmin} ${styles.navItemAdminActive}`}>Overview</a>
-            <a href="#" className={styles.navItemAdmin}>User Registrations</a>
-          </nav>
-          <LogoutButton className={`${styles.logout} ${styles.logoutAdmin}`} />
-        </aside>
-      )}
-
-      {/* Main Content Area */}
-      <main className={styles.mainContent}>
-        
-        {/* Top Header */}
-        <header className={styles.topHeader}>
-          <h1 className={styles.headerTitle}>Dashboard</h1>
-          <div className={styles.headerIcons}>
-            <span 
-              className={styles.iconPlaceholder} 
-              style={{ cursor: 'pointer', color: 'blue' }} 
-              onClick={toggleRole}
-            >
-              [Toggle Role: {role.toUpperCase()}]
-            </span>
-            <div className={styles.avatar}>Avatar</div>
-          </div>
-        </header>
-
-        {/* Content Body - Conditional Rendering */}
+    <AppShell title="Dashboard">
         <div className={styles.contentBody}>
           
           {role === 'student' ? (
@@ -201,34 +147,6 @@ export default function Dashboard() {
           )}
 
         </div>
-      </main>
-
-      {/* Mobile Bottom Navigation - Student Only */}
-      {role === 'student' && (
-        <nav className={styles.mobileNav}>
-          <div className={styles.mobileNavItem}>
-            <div className={styles.mobileNavIcon}></div>
-            <span>Home</span>
-          </div>
-          <div className={styles.mobileNavItem}>
-            <div className={styles.mobileNavIcon}></div>
-            <span>Ask</span>
-          </div>
-          <div className={styles.mobileNavItem}>
-            <div className={styles.mobileNavIcon}></div>
-            <span>Requests</span>
-          </div>
-          <div className={styles.mobileNavItem}>
-            <div className={styles.mobileNavIcon}></div>
-            <span>Sessions</span>
-          </div>
-          <div className={styles.mobileNavItem}>
-            <div className={styles.mobileNavIcon}></div>
-            <span>Profile</span>
-          </div>
-        </nav>
-      )}
-
-    </div>
+    </AppShell>
   );
 }

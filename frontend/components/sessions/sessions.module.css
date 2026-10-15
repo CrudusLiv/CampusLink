@@ -1,16 +1,12 @@
 /* Sessions module. Tokens mirror app/page.module.css (zinc/grey palette, 0.5rem cards, 768/1024 breakpoints). */
 
-/* --- Page shell (standalone until the layout teammate's shell wraps it) --- */
-.page { min-height: 100vh; background-color: #f9fafb; color: #111827; font-family: system-ui, -apple-system, sans-serif; }
-.pageHeader { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; padding: 1.25rem 1rem; background-color: #ffffff; border-bottom: 1px solid #e4e4e7; }
-.pageTitle { font-size: 1.25rem; font-weight: 700; margin: 0; }
+/* --- Page content (the shell around it comes from components/layout/AppShell) --- */
 .backLink { color: #3f3f46; font-size: 0.875rem; font-weight: 600; text-decoration: none; }
 .backLink:hover { text-decoration: underline; }
 .content { max-width: 960px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
 .sectionTitle { font-size: 1.125rem; font-weight: 700; margin: 0 0 1rem; }
 
 @media (min-width: 768px) {
-  .pageHeader { padding: 1.5rem 2rem; }
   .content { padding: 2rem; }
 }
 
@@ -38,7 +34,7 @@
 
 @media (max-width: 480px) {
   .card { flex-wrap: wrap; padding: 1rem; }
-  .badgeSoon { order: -1; }
+  .badgeSoon { margin-left: calc(44px + 1rem); } /* line up under the text, past the avatar */
 }
 
 .avatar { width: 44px; height: 44px; flex-shrink: 0; border-radius: 50%; background-color: #e4e4e7; border: 1px solid #d4d4d8; display: flex; align-items: center; justify-content: center; font-size: 0.8125rem; font-weight: 600; color: #3f3f46; overflow: hidden; }
