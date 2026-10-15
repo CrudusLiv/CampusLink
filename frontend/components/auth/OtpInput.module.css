@@ -1,0 +1,81 @@
+.row {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.cell {
+  width: 2.75rem;
+  height: 3.25rem;
+  text-align: center;
+  font-size: 1.375rem;
+  font-weight: 700;
+  font-family: inherit;
+  color: #111827;
+  background-color: #ffffff;
+  border: 1px solid #d4d4d8;
+  border-radius: 6px;
+}
+
+.cell:focus {
+  outline: 2px solid #111827;
+  outline-offset: 1px;
+}
+
+.cell:disabled {
+  background-color: #f4f4f5;
+  color: #9ca3af;
+}
+
+.cellError {
+  border-color: #dc2626;
+}
+
+/* Used by the login page's code step */
+.timer {
+  margin: 1rem 0 0 0;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #4b5563;
+}
+
+.timerExpired {
+  margin: 1rem 0 0 0;
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #dc2626;
+}
+
+.secondaryRow {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+  font-size: 0.8125rem;
+}
+
+.linkButton {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #111827;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.linkButton:disabled {
+  color: #9ca3af;
+  text-decoration: none;
+  cursor: not-allowed;
+}
+
+@media (max-width: 400px) {
+  .cell {
+    width: 2.25rem;
+    height: 2.75rem;
+    font-size: 1.125rem;
+  }
+}
