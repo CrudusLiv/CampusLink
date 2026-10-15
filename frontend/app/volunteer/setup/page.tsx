@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import AppShell from "@/components/layout/AppShell";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { SUBJECTS, DAYS, Day } from "@/lib/categories";
@@ -139,20 +140,10 @@ export default function VolunteerSetupPage() {
   }
 
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <Link href="/dashboard" className={styles.logo}>
-          CampusLink
-        </Link>
-        <Link href="/profile" className={styles.backLink}>
-          ← Back to my profile
-        </Link>
-      </header>
-
-      <main className={styles.main}>
-        <div className={styles.card}>
-          <h1 className={styles.title}>Skills &amp; availability</h1>
-
+    <AppShell title="Skills & Availability">
+      <div className={styles.page}>
+        <main className={styles.main}>
+          <div className={styles.card}>
           {!isVolunteer ? (
             <p className={styles.notice}>
               You need to become a volunteer before setting your skills.{" "}
@@ -233,8 +224,9 @@ export default function VolunteerSetupPage() {
               </button>
             </>
           )}
-        </div>
-      </main>
-    </div>
+          </div>
+        </main>
+      </div>
+    </AppShell>
   );
 }

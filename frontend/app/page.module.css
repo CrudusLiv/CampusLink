@@ -244,6 +244,8 @@
 
 .actionButtons { display: flex; gap: 1rem; margin-bottom: 2.5rem; }
 .btnPrimary { background-color: #3f3f46; color: #ffffff; padding: 0.75rem 2rem; border-radius: 0.375rem; font-weight: 600; font-size: 0.875rem; border: none; cursor: pointer; }
+.btnPrimary, .btnSecondary, .btnAction { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.btnPrimary:hover, .btnSecondary:hover, .btnAction:hover { filter: brightness(0.95); }
 .btnSecondary { background-color: #ffffff; color: #3f3f46; padding: 0.75rem 2rem; border-radius: 0.375rem; font-weight: 600; font-size: 0.875rem; border: 1px solid #d4d4d8; cursor: pointer; }
 
 .studentGrid { display: grid; grid-template-columns: 1fr; gap: 2rem; }
@@ -254,6 +256,8 @@
 
 .requestList { display: flex; flex-direction: column; gap: 1rem; }
 .requestCard { background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 0.5rem; padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+.requestCard { color: inherit; text-decoration: none; transition: border-color 120ms ease, box-shadow 120ms ease; }
+.requestCard:hover, .requestCard:focus-visible { border-color: #71717a; box-shadow: 0 2px 8px #18181b14; }
 .requestInfo h4 { margin: 0 0 0.375rem 0; font-size: 0.875rem; font-weight: 700; }
 .requestInfo p { margin: 0; font-size: 0.75rem; color: #71717a; }
 
@@ -261,14 +265,20 @@
 .badgePending { background-color: #f4f4f5; color: #52525b; border: 1px solid #d4d4d8; }
 .badgeAccepted { background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }
 .badgeCompleted { background-color: #f4f4f5; color: #52525b; border: 1px solid #d4d4d8; }
+.badgeCancelled, .badgeDeclined { background-color: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
 
 .volunteerList { display: flex; flex-direction: column; gap: 1rem; }
 .volunteerCard { background-color: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 0.5rem; padding: 1.25rem; display: flex; justify-content: space-between; align-items: center; }
 .volunteerInfo { display: flex; align-items: center; gap: 1rem; }
-.volunteerAvatar { width: 44px; height: 44px; border-radius: 50%; background-color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; border: 1px solid #d4d4d8; }
+.volunteerAvatar { width: 44px; height: 44px; border-radius: 50%; background-color: #ffffff; display: flex; align-items: center; justify-content: center; object-fit: cover; font-size: 0.75rem; border: 1px solid #d4d4d8; }
 .volunteerText h4 { margin: 0 0 0.25rem 0; font-size: 0.875rem; font-weight: 700; }
 .volunteerText p { margin: 0; font-size: 0.75rem; color: #71717a; }
 .btnAction { background-color: #ffffff; border: 1px solid #3f3f46; color: #3f3f46; padding: 0.375rem 1rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 600; }
+.dashboardMore { align-self: flex-start; color: #3f3f46; font-size: 0.8rem; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.dashboardMessage { margin: 0; padding: 1rem; border: 1px solid #e4e4e7; border-radius: 0.5rem; background: #fff; color: #52525b; font-size: 0.875rem; }
+.dashboardMessage a { color: #27272a; font-weight: 600; }
+.dashboardError { margin-bottom: 1rem; padding: 1rem; border: 1px solid #fecaca; border-radius: 0.5rem; background: #fef2f2; color: #991b1b; }
+.dashboardError button { margin-left: 0.5rem; padding: 0.35rem 0.6rem; border: 1px solid currentColor; border-radius: 0.25rem; background: #fff; color: inherit; cursor: pointer; }
 
 .mobileNav { display: flex; justify-content: space-around; background-color: #ffffff; border-top: 1px solid #e4e4e7; padding: 1rem 0; position: sticky; bottom: 0; width: 100%; }
 @media (min-width: 768px) { .mobileNav { display: none; } }

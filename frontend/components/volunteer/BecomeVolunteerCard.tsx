@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useVolunteerDashboardView } from "@/components/dashboard/VolunteerViewContext";
 import { supabase } from "@/lib/supabaseClient";
 import styles from "./BecomeVolunteerCard.module.css";
 
@@ -17,6 +18,7 @@ export default function BecomeVolunteerCard({ userId }: { userId: string }) {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const { view, setView } = useVolunteerDashboardView();
 
   useEffect(() => {
     supabase
@@ -59,6 +61,26 @@ export default function BecomeVolunteerCard({ userId }: { userId: string }) {
           <h2 className={styles.title}>You're a volunteer</h2>
           <p className={styles.text}>Keep your subjects and free times up to date so students can find you.</p>
         </div>
+        <section className={styles.dashboardSwitch} aria-labelledby="dashboard-view-title">
+          <div>
+            <h3 id="dashboard-view-title" className={styles.switchTitle}>Choose dashboard view</h3>
+            <p className={styles.text}>Switch between your student and volunteer dashboards.</p>
+          </div>
+          <div className={styles.switchButtons} role="group" aria-label="Dashboard view">
+            <button
+              type="button"
+              className={view === "student" ? styles.switchButtonActive : styles.switchButton}
+              aria-pressed={view === "student"}
+              onClick={() => { setView("student"); router.push("/dashboard"); }}
+            >Student</button>
+            <button
+              type="button"
+              className={view === "volunteer" ? styles.switchButtonActive : styles.switchButton}
+              aria-pressed={view === "volunteer"}
+              onClick={() => { setView("volunteer"); router.push("/dashboard"); }}
+            >Volunteer</button>
+          </div>
+        </section>
         <Link href="/volunteer/setup" className={styles.secondaryButton}>
           Edit skills &amp; availability
         </Link>
