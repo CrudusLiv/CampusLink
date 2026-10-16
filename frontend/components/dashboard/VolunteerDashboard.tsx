@@ -14,7 +14,6 @@ type DashboardRequest = {
   support_mode: string | null;
   requester_id: string;
   status: string;
-  rating: number | null;
   requester_name: string;
 };
 
@@ -43,6 +42,7 @@ function formatDate(value: string) {
 export default function VolunteerDashboard() {
   const { profile } = useCurrentUser();
   const [requests, setRequests] = useState<DashboardRequest[]>([]);
+  const [ratings, setRatings] = useState<number[]>([]);
   const [state, setState] = useState<DataState>("loading");
   const [attempt, setAttempt] = useState(0);
   const [respondingId, setRespondingId] = useState<string | null>(null);
@@ -54,14 +54,17 @@ export default function VolunteerDashboard() {
 
     async function loadDashboard() {
       setState("loading");
-      const { data, error } = await supabase
+      const [{ data, error }, { data: feedback, error: feedbackError }] = await Promise.all([
+        supabase
         .from("support_request")
-        .select("request_id, title, category, requested_date, requested_time, support_mode, requester_id, status, rating")
+        .select("request_id, title, category, requested_date, requested_time, support_mode, requester_id, status")
         .eq("volunteer_id", profile!.user_id)
-        .order("requested_date", { ascending: true });
+        .order("requested_date", { ascending: true }),
+        supabase.from("feedback").select("rating").eq("volunteer_id", profile!.user_id),
+      ]);
 
       if (cancelled) return;
-      if (error) {
+      if (error || feedbackError) {
         setState("error");
         return;
       }
@@ -83,9 +86,9 @@ export default function VolunteerDashboard() {
         ...row,
         id: row.request_id,
         status: String(row.status),
-        rating: row.rating === null ? null : Number(row.rating),
         requester_name: names.get(row.requester_id) ?? "Student",
       })));
+      setRatings((feedback ?? []).map((item) => Number(item.rating)));
       setState("ready");
     }
 
@@ -95,14 +98,13 @@ export default function VolunteerDashboard() {
 
   const metrics = useMemo(() => {
     const { start, end } = currentWeekRange();
-    const ratings = requests.map((request) => request.rating).filter((rating): rating is number => rating !== null);
     return {
       newRequests: requests.filter((request) => request.status === "Pending").length,
       sessionsThisWeek: requests.filter((request) => request.status === "Accepted" && request.requested_date >= start && request.requested_date < end).length,
       averageRating: ratings.length ? (ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length).toFixed(1) : "0.0",
       sessionsCompleted: requests.filter((request) => request.status === "Completed").length,
     };
-  }, [requests]);
+  }, [requests, ratings]);
 
   const newRequests = requests.filter((request) => request.status === "Pending").slice(0, 4);
   const today = dateKey(new Date());
@@ -130,7 +132,7 @@ export default function VolunteerDashboard() {
 
   if (state === "error") return (
     <main className={styles.content}>
-      <p className={styles.error} role="alert">We couldn't load your volunteer dashboard data. Check that the volunteer dashboard migration has been applied, then try again.</p>
+      <p className={styles.error} role="alert">We couldn&apos;t load your volunteer dashboard data. Check that the volunteer dashboard migration has been applied, then try again.</p>
       <button className={styles.retryButton} type="button" onClick={() => setAttempt((value) => value + 1)}>Retry</button>
     </main>
   );

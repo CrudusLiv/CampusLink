@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { Avatar } from "@/components/sessions/Avatar";
-import { fetchSession, updateMockSession } from "@/lib/sessions/client";
+import { fetchSession } from "@/lib/sessions/client";
+import { supabase } from "@/lib/supabaseClient";
 import { formatDate, formatTime } from "@/lib/sessions/time";
 import type { SessionView } from "@/lib/sessions/types";
 import styles from "./session-detail.module.css";
@@ -30,8 +31,13 @@ export default function SessionDetail({ sessionId }: { sessionId: string }) {
     fetchSession(sessionId).then((record) => {
       if (active) {
         setSession(record);
-        setRating(record?.rating ?? 0);
-        setFeedback(record?.feedback ?? "");
+        if (record) {
+          void supabase.from("feedback").select("rating, comment").eq("session_id", record.id).maybeSingle().then(({ data }) => {
+            if (!active || !data) return;
+            setRating(Number(data.rating));
+            setFeedback(data.comment ?? "");
+          });
+        }
         if (record) setNewDateTime(toLocalDateTime(record.scheduledDatetime));
         setLoading(false);
       }
@@ -39,25 +45,43 @@ export default function SessionDetail({ sessionId }: { sessionId: string }) {
     return () => { active = false; };
   }, [sessionId]);
 
-  function saveUpdate(update: Partial<SessionView>, successMessage: string) {
+  function saveUpdate(update: Partial<SessionView>) {
     setError("");
-    if (!updateMockSession(sessionId, update)) {
-      setError("This browser couldn't save the change. Check that local storage is available and try again.");
-      return false;
-    }
     setSession((current) => current ? { ...current, ...update } : current);
-    setMessage(successMessage);
+    setMessage("This change is temporary and hasn't been saved yet.");
     return true;
   }
 
-  function submitRating(event: FormEvent<HTMLFormElement>) {
+  async function submitRating(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
+    const currentSession = session;
+    if (!currentSession) {
+      setError("We couldn't find this session.");
+      return;
+    }
     if (rating < 1) {
       setError("Choose a star rating before submitting.");
       return;
     }
-    saveUpdate({ rating, feedback: feedback.trim() }, "Thanks! Your rating has been saved on this device.");
+    setError("");
+    setMessage("");
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) {
+      setError("Sign in before submitting session feedback.");
+      return;
+    }
+    const { error: saveError } = await supabase.from("feedback").upsert({
+      session_id: currentSession.id,
+      volunteer_id: currentSession.volunteer.id,
+      rating,
+      comment: feedback.trim() || null,
+    }, { onConflict: "session_id" });
+    if (saveError) {
+      setError("We couldn't save feedback for this session. Please try again.");
+      return;
+    }
+    setMessage("Your feedback has been saved.");
   }
 
   function submitReschedule(event: FormEvent<HTMLFormElement>) {
@@ -69,20 +93,20 @@ export default function SessionDetail({ sessionId }: { sessionId: string }) {
       setError("Choose a future date and time.");
       return;
     }
-    if (saveUpdate({ scheduledDatetime: date.toISOString(), rescheduleNote: rescheduleNote.trim() }, "The new session time has been saved on this device.")) {
+    if (saveUpdate({ scheduledDatetime: date.toISOString(), rescheduleNote: rescheduleNote.trim() })) {
       setShowReschedule(false);
     }
   }
 
   function finishSession(status: "Completed" | "Cancelled") {
     setMessage("");
-    saveUpdate({ status }, status === "Completed" ? "Session marked as completed." : "Session cancelled.");
+    saveUpdate({ status });
   }
 
   if (loading) return <main className={styles.content}><p className={styles.message}>Loading session…</p></main>;
   if (!session) return (
     <main className={styles.content}>
-      <p className={styles.message}>We couldn't find this session.</p>
+      <p className={styles.message}>We couldn&apos;t find this session.</p>
       <Link className={styles.backLink} href="/sessions">← Back to My Support Sessions</Link>
     </main>
   );
@@ -146,8 +170,8 @@ export default function SessionDetail({ sessionId }: { sessionId: string }) {
           </fieldset>
           <label className={styles.srOnly} htmlFor="session-feedback">Comment</label>
           <textarea id="session-feedback" className={styles.comment} rows={5} value={feedback} onChange={(event) => setFeedback(event.target.value)} placeholder="Comment (optional)" maxLength={1000} />
-          <button className={styles.primaryButton} type="submit">{session.rating ? "Update rating" : "Submit rating"}</button>
-          <p className={styles.storageNote}>Session details and feedback are currently stored in this browser only.</p>
+          <button className={styles.primaryButton} type="submit">Submit feedback</button>
+          <p className={styles.storageNote}>Your rating and comment are stored as session feedback.</p>
         </form>
       </div>
     </main>
