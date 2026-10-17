@@ -6,7 +6,7 @@
 
 import { useEffect, useState, FormEvent } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { useCurrentUser } from "@/lib/useCurrentUser";
+import { refreshCurrentUser, useCurrentUser } from "@/lib/useCurrentUser";
 import AppShell from "@/components/layout/AppShell";
 import styles from "./profile.module.css";
 import BecomeVolunteerCard from "@/components/volunteer/BecomeVolunteerCard";
@@ -96,6 +96,7 @@ export default function ProfilePage() {
       return;
     }
     setMessage("Profile updated successfully.");
+    await refreshCurrentUser(); // the sidebar and header read the same shared profile
   }
 
   if (!profile) {
