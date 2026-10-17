@@ -176,7 +176,7 @@ export default function RegisterPage() {
               type="email"
               value={form.email}
               error={errors.email}
-              placeholder="b2400089@helplive.edu.my"
+              placeholder="bxxxxxxx@helplive.edu.my"
               onChange={(v) => handleChange("email", v)}
             />
             <Field
