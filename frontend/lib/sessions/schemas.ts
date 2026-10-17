@@ -16,6 +16,12 @@ export const scheduleSchema = z.object({
 
 export type ScheduleInput = z.infer<typeof scheduleSchema>;
 
+/** GET /api/sessions?status=Scheduled&upcoming=true */
+export const listQuerySchema = z.object({
+  status: z.enum(['Scheduled', 'Completed', 'Cancelled']).optional(),
+  upcoming: z.enum(['true', 'false']).optional().transform((v) => v === 'true'),
+});
+
 /** First message per field, ready to show next to the inputs. */
 export function fieldErrors(error: z.ZodError): Record<string, string> {
   const flat = z.flattenError(error).fieldErrors as Record<string, string[] | undefined>;
