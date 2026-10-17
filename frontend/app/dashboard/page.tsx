@@ -24,74 +24,6 @@ export default function Dashboard() {
     <AppShell title="Dashboard">
         <div className={styles.contentBody}>
           
-          {role === 'student' ? (
-            /* Student View */
-            <>
-              <div className={styles.actionButtons}>
-                <button className={styles.btnPrimary}>Submit New Request</button>
-                <button className={styles.btnSecondary}>Browse Volunteers</button>
-              </div>
-
-              <div className={styles.studentGrid}>
-                
-                <div>
-                  <h2 className={styles.sectionTitle}>My Requests</h2>
-                  <div className={styles.requestList}>
-                    <div className={styles.requestCard}>
-                      <div className={styles.requestInfo}>
-                        <h4>Math tutoring</h4>
-                        <p>Tue 21 Sep · 4:00 PM · Online</p>
-                      </div>
-                      <span className={`${styles.badge} ${styles.badgePending}`}>Pending</span>
-                    </div>
-                    <div className={styles.requestCard}>
-                      <div className={styles.requestInfo}>
-                        <h4>Laptop setup</h4>
-                        <p>Wed 22 Sep · 2:00 PM · In person</p>
-                      </div>
-                      <span className={`${styles.badge} ${styles.badgeAccepted}`}>Accepted</span>
-                    </div>
-                    <div className={styles.requestCard}>
-                      <div className={styles.requestInfo}>
-                        <h4>Campus tour</h4>
-                        <p>Mon 19 Sep · 10:30 AM · In person</p>
-                      </div>
-                      <span className={`${styles.badge} ${styles.badgeCompleted}`}>Completed</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h2 className={styles.sectionTitle}>Suggested Volunteers For You</h2>
-                  <p className={styles.sectionSubtitle}>Updates as you pick a category and time</p>
-                  <div className={styles.volunteerList}>
-                    <div className={styles.volunteerCard}>
-                      <div className={styles.volunteerInfo}>
-                        <div className={styles.volunteerAvatar}>Avatar</div>
-                        <div className={styles.volunteerText}>
-                          <h4>Jane D.</h4>
-                          <p>Math</p>
-                        </div>
-                      </div>
-                      <button className={styles.btnAction}>[Request]</button>
-                    </div>
-                    <div className={styles.volunteerCard}>
-                      <div className={styles.volunteerInfo}>
-                        <div className={styles.volunteerAvatar}>Avatar</div>
-                        <div className={styles.volunteerText}>
-                          <h4>Ali R.</h4>
-                          <p>IT Help</p>
-                        </div>
-                      </div>
-                      <button className={styles.btnAction}>[Request]</button>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </>
-          ) : (
-            /* Admin View */
             <>
               <div className={styles.metricsGrid}>
                 <div className={styles.metricCard}>Total users : xxx</div>
@@ -153,7 +85,6 @@ export default function Dashboard() {
                 </div>
               </div>
             </>
-          )}
 
         </div>
     </AppShell>

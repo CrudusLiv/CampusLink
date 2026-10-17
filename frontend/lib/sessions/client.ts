@@ -1,10 +1,10 @@
-// Data facade used by the components. UI phase: backed by mocks.
-// Swap the bodies for fetch('/api/sessions') calls once the route exists; signatures stay.
-import { mockUpcoming, MOCK_CONTEXT } from './mock';
+// Browser-side data facade for the sessions screens. Talks to /api/sessions with the signed-in user's token.
+import { supabase } from '@/lib/supabaseClient';
 import type { ScheduleInput } from './schemas';
-import type { SessionView } from './types';
+import type { AwaitingRequest, ScheduleContext, SessionView } from './types';
 
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+// ---- Browser-only edits made by the session detail page (reschedule / cancel / complete / rating). ----
+// These are NOT saved to the database yet (Iteration 2 replaces them with real PATCH calls + the feedback table).
 const SESSION_UPDATES_KEY = 'campuslink.session.updates.v1';
 
 type SessionUpdate = Partial<Pick<SessionView, 'scheduledDatetime' | 'status' | 'rating' | 'feedback' | 'rescheduleNote'>>;
@@ -29,14 +29,28 @@ export function updateMockSession(id: string, update: SessionUpdate) {
   }
 }
 
+// ---- API calls ----
+async function api(path: string, init: { method?: string; body?: unknown } = {}) {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  const res = await fetch(path, {
+    method: init.method ?? 'GET',
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: init.body ? JSON.stringify(init.body) : undefined,
+  });
+  return { status: res.status, body: (await res.json().catch(() => null)) as Record<string, unknown> | null };
+}
+
+/** `preview` only exists so the UI states can be demoed with /sessions?state=empty|error. */
 export type PreviewState = 'empty' | 'error';
 
 export async function fetchUpcoming(preview?: PreviewState): Promise<SessionView[]> {
-  await delay(700);
-  if (preview === 'error') throw new Error('mock error');
+  if (preview === 'error') throw new Error('preview error');
   if (preview === 'empty') return [];
+  const { status, body } = await api('/api/sessions?status=Scheduled&upcoming=true');
+  if (status !== 200 || !body) throw new Error(`Could not load sessions (${status})`);
   const updates = readSessionUpdates();
-  return mockUpcoming().map((session) => ({ ...session, ...updates[session.id] }));
+  return (body.sessions as SessionView[]).map((session) => ({ ...session, ...updates[session.id] }));
 }
 
 export async function fetchSession(id: string): Promise<SessionView | null> {
@@ -44,26 +58,29 @@ export async function fetchSession(id: string): Promise<SessionView | null> {
   return sessions.find((session) => session.id === id) ?? null;
 }
 
-export type ScheduleResult =
-  | { ok: true; session: SessionView }
-  | { ok: false; error: 'slot_taken' | 'unknown'; message: string };
+/** Accepted requests that still need a session time. */
+export async function fetchAwaiting(): Promise<AwaitingRequest[]> {
+  const { status, body } = await api('/api/sessions/awaiting');
+  if (status !== 200 || !body) throw new Error(`Could not load accepted requests (${status})`);
+  return body.requests as AwaitingRequest[];
+}
+
+/** The accepted request + free slots for the Schedule screen. null = not found / not accepted / not yours. */
+export async function fetchScheduleOptions(requestId: string): Promise<{ context: ScheduleContext; slots: string[] } | null> {
+  const { status, body } = await api(`/api/sessions/schedule-context?requestId=${encodeURIComponent(requestId)}`);
+  if (status === 404) return null;
+  if (status !== 200 || !body) throw new Error(`Could not load scheduling options (${status})`);
+  return body as unknown as { context: ScheduleContext; slots: string[] };
+}
+
+export type ScheduleResult = { ok: true; session: SessionView } | { ok: false; error: string; message: string };
 
 export async function scheduleSession(input: ScheduleInput): Promise<ScheduleResult> {
-  await delay(700);
-  const { requester, volunteer, requestTitle } = MOCK_CONTEXT;
+  const { status, body } = await api('/api/sessions', { method: 'POST', body: input });
+  if (status === 201 && body) return { ok: true, session: body.session as SessionView };
   return {
-    ok: true,
-    session: {
-      id: 'c1b2c3d4-0009-4000-8000-000000000009',
-      requestId: input.requestId,
-      requestTitle,
-      scheduledDatetime: input.scheduledDatetime,
-      supportMode: input.supportMode,
-      meetingLink: input.meetingLink ?? null,
-      status: 'Scheduled',
-      requester,
-      volunteer,
-      other: volunteer,
-    },
+    ok: false,
+    error: String(body?.error ?? 'unknown'),
+    message: String(body?.message ?? 'Something went wrong. Please try again.'),
   };
 }
