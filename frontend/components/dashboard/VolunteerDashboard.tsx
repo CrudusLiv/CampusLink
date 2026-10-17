@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/lib/useCurrentUser";
+import { UpcomingSessionsSection } from "@/components/sessions/UpcomingSessionsSection";
 import styles from "./VolunteerDashboard.module.css";
 
 type DashboardRequest = {
@@ -177,6 +178,8 @@ export default function VolunteerDashboard() {
           ) : <p className={styles.empty}>No sessions scheduled for today.</p>}
         </section>
       </div>
+
+      <UpcomingSessionsSection />
     </main>
   );
 }

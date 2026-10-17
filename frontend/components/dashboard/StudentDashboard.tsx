@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/lib/useCurrentUser";
+import { UpcomingSessionsSection } from "@/components/sessions/UpcomingSessionsSection";
 import styles from "@/app/page.module.css";
 
 type Request = {
@@ -102,5 +103,6 @@ export default function StudentDashboard() {
         </div> : <div className={styles.dashboardMessage}>No volunteer has been selected for your recent requests yet. <Link href="/volunteer-lists">Browse volunteers</Link></div>}
       </section>
     </div>
+    <UpcomingSessionsSection />
   </div>;
 }
