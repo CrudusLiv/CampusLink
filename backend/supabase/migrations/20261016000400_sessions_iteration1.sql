@@ -50,6 +50,12 @@ begin
   if v_requester is null then
     raise exception 'REQUEST_NOT_FOUND';
   end if;
+  -- BEFORE triggers run ahead of row-level security, so check membership here first. Otherwise the
+  -- errors below would tell an outsider whether someone else's volunteer is busy. (auth.uid() is
+  -- null only for the SQL Editor / service role, which is allowed.)
+  if auth.uid() is not null and auth.uid() not in (v_requester, coalesce(v_volunteer, v_requester)) then
+    raise exception 'NOT_PARTICIPANT';
+  end if;
   if v_volunteer is null then
     raise exception 'NO_VOLUNTEER';
   end if;
