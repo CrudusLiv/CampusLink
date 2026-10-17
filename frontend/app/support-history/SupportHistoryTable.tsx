@@ -15,7 +15,6 @@ type HistoryRow = {
   volunteer_name: string | null;
   status: HistoryStatus;
   rating: number | null;
-  feedbackCount: number;
 };
 
 function formatDate(value: string) {
@@ -29,6 +28,7 @@ export default function SupportHistoryTable() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [savingRatingId, setSavingRatingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!profile) return;
@@ -39,7 +39,7 @@ export default function SupportHistoryTable() {
       setError("");
       const { data, error: queryError } = await supabase
         .from("support_request")
-        .select("request_id, title, category, requested_date, volunteer_id, status, session(session_id, feedback(rating))")
+        .select("request_id, title, category, requested_date, volunteer_id, status, rating")
         .eq("requester_id", profile!.user_id)
         .in("status", ["Completed", "Cancelled"])
         .order("requested_date", { ascending: false });
@@ -65,19 +65,13 @@ export default function SupportHistoryTable() {
       }
 
       const names = new Map((volunteers ?? []).map((volunteer) => [volunteer.user_id, volunteer.name]));
-      setRows(history.map((row) => {
-        const ratings = (row.session ?? []).flatMap((session) =>
-          (session.feedback ?? []).map((item) => Number(item.rating))
-        );
-        return {
-          ...row,
-          id: row.request_id,
-          status: row.status as HistoryStatus,
-          rating: ratings.length ? ratings.reduce((sum, value) => sum + value, 0) / ratings.length : null,
-          feedbackCount: ratings.length,
-          volunteer_name: row.volunteer_id ? names.get(row.volunteer_id) ?? null : null,
-        };
-      }));
+      setRows(history.map((row) => ({
+        ...row,
+        id: row.request_id,
+        status: row.status as HistoryStatus,
+        rating: row.rating === null ? null : Number(row.rating),
+        volunteer_name: row.volunteer_id ? names.get(row.volunteer_id) ?? null : null,
+      })));
       setLoading(false);
     }
 
@@ -91,6 +85,26 @@ export default function SupportHistoryTable() {
     return rows.filter((row) => [row.title, row.category, row.volunteer_name ?? "", row.requested_date, row.status]
       .some((value) => value.toLocaleLowerCase().includes(term)));
   }, [rows, search]);
+
+  async function saveRating(row: HistoryRow, rating: number) {
+    if (!profile || savingRatingId) return;
+    setSavingRatingId(row.id);
+    setError("");
+    const { data, error: saveError } = await supabase
+      .from("support_request")
+      .update({ rating })
+      .eq("request_id", row.id)
+      .eq("requester_id", profile.user_id)
+      .eq("status", "Completed")
+      .select("request_id")
+      .maybeSingle();
+    setSavingRatingId(null);
+    if (saveError || !data) {
+      setError("We couldn't save your rating. Make sure the support history migration has been applied.");
+      return;
+    }
+    setRows((current) => current.map((item) => item.id === row.id ? { ...item, rating } : item));
+  }
 
   return (
     <main className={styles.content}>
@@ -123,11 +137,17 @@ export default function SupportHistoryTable() {
                 <td>{row.volunteer_name ?? "—"}</td>
                 <td>{formatDate(row.requested_date)}</td>
                 <td>
-                  {row.rating !== null ? (
-                    <span className={styles.ratingStars} aria-label={`Average session feedback: ${row.rating.toFixed(1)} out of 5`}>
-                      {row.rating.toFixed(1)} / 5 ({row.feedbackCount})
+                  {row.rating ? (
+                    <span className={styles.ratingStars} aria-label={`Your rating: ${row.rating} out of 5`}>
+                      {Array.from({ length: 5 }, (_, index) => index < row.rating! ? "★" : "☆").join("")}
                     </span>
-                  ) : <span aria-label="No feedback">—</span>}
+                  ) : row.status === "Completed" ? (
+                    <span className={styles.ratingPicker} role="group" aria-label={`Rate ${row.title}`}>
+                      {[1, 2, 3, 4, 5].map((value) => <button key={value} type="button" aria-label={`${value} star${value === 1 ? "" : "s"}`} disabled={savingRatingId !== null} onClick={() => saveRating(row, value)}>
+                        {savingRatingId === row.id ? "…" : "☆"}
+                      </button>)}
+                    </span>
+                  ) : <span aria-label="No rating">—</span>}
                 </td>
                 <td><span className={`${styles.status} ${row.status === "Completed" ? styles.statusCompleted : styles.statusCancelled}`}>{row.status}</span></td>
               </tr>)}
@@ -135,7 +155,7 @@ export default function SupportHistoryTable() {
           </table>
         </div>
       )}
-      <p className={styles.ratingNote}>Ratings shown here come from feedback submitted for sessions linked to each request.</p>
+      <p className={styles.ratingNote}>Ratings will appear here when session feedback is available.</p>
     </main>
   );
 }
