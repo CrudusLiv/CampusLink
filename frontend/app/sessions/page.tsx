@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import AppShell from '@/components/layout/AppShell';
+import { AwaitingSessions } from '@/components/sessions/AwaitingSessions';
 import { UpcomingSessions } from '@/components/sessions/UpcomingSessions';
 import s from '@/components/sessions/sessions.module.css';
 
@@ -11,6 +12,7 @@ export default async function SessionsPage({ searchParams }: { searchParams: Pro
   return (
     <AppShell title="My Support Sessions">
       <main className={s.content}>
+        <AwaitingSessions />
         <h2 className={s.sectionTitle}>Upcoming</h2>
         <UpcomingSessions preview={preview} />
       </main>
