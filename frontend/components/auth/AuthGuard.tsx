@@ -5,6 +5,7 @@
 
 import { useEffect, ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { AppShellLoading } from "@/components/layout/AppShell";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 
 export default function AuthGuard({ children }: { children: ReactNode }) {
@@ -17,11 +18,16 @@ export default function AuthGuard({ children }: { children: ReactNode }) {
     }
   }, [loading, profile, router]);
 
-  // Show nothing private until we know the user is logged in
-  if (loading || !profile) {
+  // Still finding out who is logged in: keep the page layout on screen (sidebar, header) with placeholders in
+  // the content area, so the page doesn't flash a bare "Loading..." and then jump to the real layout.
+  // Nothing private is shown, only the fixed menu labels.
+  if (loading) return <AppShellLoading />;
+
+  // Not logged in: the effect above is sending them to /login.
+  if (!profile) {
     return (
       <p style={{ padding: "2rem", fontFamily: "system-ui, sans-serif", color: "#4b5563" }}>
-        Loading...
+        Redirecting to sign in...
       </p>
     );
   }

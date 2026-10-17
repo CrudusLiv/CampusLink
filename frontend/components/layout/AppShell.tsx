@@ -120,3 +120,20 @@ export default function AppShell({ title, children }: { title: string; children:
     </div>
   );
 }
+
+/**
+ * The shell with placeholder content. Show this while a page is still loading, instead of nothing or a bare
+ * "Loading..." line, so the sidebar and header stay on screen and only the content area fills in.
+ */
+export function AppShellLoading({ title = "" }: { title?: string }) {
+  return (
+    <AppShell title={title}>
+      <div className={styles.loadingBody} role="status" aria-live="polite">
+        <span className={styles.srOnly}>Loading…</span>
+        <div className={styles.loadingBar} aria-hidden="true" />
+        <div className={styles.loadingBar} aria-hidden="true" />
+        <div className={styles.loadingBar} aria-hidden="true" />
+      </div>
+    </AppShell>
+  );
+}

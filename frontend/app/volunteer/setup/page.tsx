@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import AppShell from "@/components/layout/AppShell";
+import AppShell, { AppShellLoading } from "@/components/layout/AppShell";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { SUBJECTS, DAYS, Day } from "@/lib/categories";
@@ -136,7 +136,8 @@ export default function VolunteerSetupPage() {
   }
 
   if (!profile || isVolunteer === null) {
-    return null; // AuthGuard shows "Loading..." meanwhile
+    // Keep the layout on screen while the saved skills and schedule load (returning nothing blanked the page)
+    return <AppShellLoading title="Skills & Availability" />;
   }
 
   return (
