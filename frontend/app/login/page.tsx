@@ -140,6 +140,15 @@ export default function LoginPage() {
   }
 
   // Step 2: 6-digit code
+    // Sign in with a HELP University Microsoft account (Microsoft handles its own 2FA)
+  async function handleMicrosoft() {
+    setError("");
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: "azure",
+      options: { scopes: "email", redirectTo: `${window.location.origin}/dashboard` },
+    });
+    if (oauthError) setError("We couldn't start Microsoft sign-in. Please try again.");
+  }
   async function handleCodeSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -264,6 +273,10 @@ export default function LoginPage() {
               </form>
 
               <p className={styles.switch}>
+                              <div className={styles.divider}>or</div>
+              <button type="button" onClick={handleMicrosoft} className={styles.microsoftButton}>
+                Sign in with Microsoft (HELP account)
+              </button>
                 New to CampusLink? <Link href="/register">Create an account</Link>
               </p>
             </>
