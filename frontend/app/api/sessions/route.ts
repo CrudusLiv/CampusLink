@@ -20,7 +20,8 @@ export async function GET(req: Request) {
 
   try {
     return NextResponse.json({ sessions: await listSessions(auth.db, auth.me.id, query.data) });
-  } catch {
+  } catch (e) {
+    console.error('GET /api/sessions failed:', e instanceof Error ? e.message : e); // shows in Vercel > Logs
     return fail(500, 'unknown', 'We could not load your support sessions');
   }
 }

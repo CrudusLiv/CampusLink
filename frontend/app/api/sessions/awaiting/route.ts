@@ -9,7 +9,8 @@ export async function GET(req: Request) {
   if (!auth) return unauthorized();
   try {
     return NextResponse.json({ requests: await listAwaitingRequests(auth.db, auth.me.id) });
-  } catch {
+  } catch (e) {
+    console.error('GET /api/sessions/awaiting failed:', e instanceof Error ? e.message : e); // shows in Vercel > Logs
     return fail(500, 'unknown', 'We could not load your accepted requests');
   }
 }

@@ -39,7 +39,7 @@ export default function SupportHistoryTable() {
       setError("");
       const { data, error: queryError } = await supabase
         .from("support_request")
-        .select("request_id, title, category, requested_date, volunteer_id, status, rating")
+        .select("request_id, title, category, requested_date, volunteer_id, status")
         .eq("requester_id", profile!.user_id)
         .in("status", ["Completed", "Cancelled"])
         .order("requested_date", { ascending: false });
@@ -69,7 +69,7 @@ export default function SupportHistoryTable() {
         ...row,
         id: row.request_id,
         status: row.status as HistoryStatus,
-        rating: row.rating === null ? null : Number(row.rating),
+        rating: null, // ratings now live in the feedback table, not on support_request
         volunteer_name: row.volunteer_id ? names.get(row.volunteer_id) ?? null : null,
       })));
       setLoading(false);
