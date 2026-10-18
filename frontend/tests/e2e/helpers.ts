@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { Page } from '@playwright/test';
 
@@ -37,5 +37,6 @@ export async function signIn(page: Page) {
 export async function evidence(page: Page, testCaseId: string) {
   await page.addStyleTag({ content: 'nextjs-portal{display:none!important}' });
   await page.waitForTimeout(250);
+  mkdirSync(EVIDENCE_DIR, { recursive: true });
   await page.screenshot({ path: path.join(EVIDENCE_DIR, `${testCaseId}.png`) });
 }

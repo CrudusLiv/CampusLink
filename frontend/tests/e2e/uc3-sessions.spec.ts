@@ -125,3 +125,51 @@ test('TCUC3_10 empty, loading, error and no-request screens', async () => {
   await expect(page.getByText('Nothing to schedule here')).toBeVisible({ timeout: 60_000 });
   await evidence(page, 'TCUC3_10d');
 });
+
+// System test case ST-SCH-02 (invalid input on the schedule form): 02a no time, 02b insecure link, 02c request not accepted.
+// Nothing is saved: the form's own validation stops the first two before any request is sent, and the third only
+// opens a page. The test checks that no booking request reaches the server.
+test('ST-SCH-02 invalid input on the schedule form: no time, insecure link, request not accepted', async () => {
+  await page.setViewportSize({ width: 1280, height: 900 }); // tall enough to show an error under the form
+  let bookingRequests = 0;
+  page.on('request', (r) => {
+    if (r.method() === 'POST' && new URL(r.url()).pathname === '/api/sessions') bookingRequests++;
+  });
+
+  // Needs an accepted request that has no session yet (test data); skip, don't fail, without one.
+  await page.goto('/sessions');
+  await settled();
+  const waiting = page.getByRole('link', { name: 'Schedule session' });
+  test.skip((await waiting.count()) === 0, 'Needs an accepted request still waiting for a time (test data).');
+  const requestId = new URL((await waiting.first().getAttribute('href')) ?? '', page.url()).searchParams.get('requestId');
+
+  // ST-SCH-02a: a mode is chosen but no time
+  await page.goto(`/sessions/schedule?requestId=${requestId}`);
+  await expect(page.locator('[aria-label^="Choose a time"] button').first()).toBeVisible({ timeout: 60_000 });
+  await page.getByLabel('Chat').check();
+  await page.getByRole('button', { name: /Confirm Support Session/ }).click();
+  // exact: the heading "1. Pick a date and time" contains the same words
+  const noTime = page.getByText('Pick a date and time', { exact: true });
+  await expect(noTime).toBeVisible();
+  await noTime.scrollIntoViewIfNeeded();
+  await evidence(page, 'ST-SCH-02a');
+
+  // ST-SCH-02b: a time and Online chosen, with an http:// link
+  await page.goto(`/sessions/schedule?requestId=${requestId}`);
+  await page.locator('[aria-label^="Choose a time"] button').first().click();
+  await page.getByLabel('Online').check();
+  await page.locator('#meetingLink').fill('http://insecure.example');
+  await page.getByRole('button', { name: /Confirm Support Session/ }).click();
+  const badLink = page.getByText('Meeting link must be a valid https:// link');
+  await expect(badLink).toBeVisible();
+  await badLink.scrollIntoViewIfNeeded();
+  await evidence(page, 'ST-SCH-02b');
+
+  // ST-SCH-02c: a request that is not accepted (the Pending test request; any unknown id looks the same)
+  await page.goto('/sessions/schedule?requestId=b1b2c3d4-0003-4000-8000-000000000003');
+  await expect(page.getByText('Nothing to schedule here')).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator('[aria-label^="Choose a time"]')).toHaveCount(0);
+  await evidence(page, 'ST-SCH-02c');
+
+  expect(bookingRequests).toBe(0);
+});
