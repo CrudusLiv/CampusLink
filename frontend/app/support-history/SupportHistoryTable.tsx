@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/lib/useCurrentUser";
+import RequestStatusBadge from "@/components/support-requests/RequestStatusBadge";
+import { supportHistoryQuery, type SupportRequestStatus } from "@/lib/support-requests/history";
 import styles from "./support-history.module.css";
 
-type HistoryStatus = "Completed" | "Cancelled";
 type HistoryRow = {
   id: string;
   title: string;
@@ -13,9 +14,12 @@ type HistoryRow = {
   requested_date: string;
   volunteer_id: string | null;
   volunteer_name: string | null;
-  status: HistoryStatus;
+  status: SupportRequestStatus;
   rating: number | null;
 };
+
+const FILTERS = ["All", "Completed", "Cancelled", "Declined"] as const;
+type StatusFilter = (typeof FILTERS)[number];
 
 function formatDate(value: string) {
   const date = new Date(`${value.slice(0, 10)}T00:00:00`);
@@ -26,6 +30,7 @@ export default function SupportHistoryTable() {
   const { profile } = useCurrentUser();
   const [rows, setRows] = useState<HistoryRow[]>([]);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [savingRatingId, setSavingRatingId] = useState<string | null>(null);
@@ -37,11 +42,12 @@ export default function SupportHistoryTable() {
     async function loadHistory() {
       setLoading(true);
       setError("");
+      const query = supportHistoryQuery("student", profile!.user_id);
       const { data, error: queryError } = await supabase
         .from("support_request")
         .select("request_id, title, category, requested_date, volunteer_id, status")
-        .eq("requester_id", profile!.user_id)
-        .in("status", ["Completed", "Cancelled"])
+        .eq(query.ownerColumn, query.ownerId)
+        .in("status", [...query.statuses])
         .order("requested_date", { ascending: false });
 
       if (cancelled) return;
@@ -68,7 +74,7 @@ export default function SupportHistoryTable() {
       setRows(history.map((row) => ({
         ...row,
         id: row.request_id,
-        status: row.status as HistoryStatus,
+        status: row.status as SupportRequestStatus,
         rating: null, // ratings now live in the feedback table, not on support_request
         volunteer_name: row.volunteer_id ? names.get(row.volunteer_id) ?? null : null,
       })));
@@ -81,10 +87,13 @@ export default function SupportHistoryTable() {
 
   const filteredRows = useMemo(() => {
     const term = search.trim().toLocaleLowerCase();
-    if (!term) return rows;
-    return rows.filter((row) => [row.title, row.category, row.volunteer_name ?? "", row.requested_date, row.status]
-      .some((value) => value.toLocaleLowerCase().includes(term)));
-  }, [rows, search]);
+    return rows.filter((row) => {
+      const matchesStatus = statusFilter === "All" || row.status === statusFilter;
+      const matchesSearch = !term || [row.title, row.category, row.volunteer_name ?? "", row.requested_date, row.status]
+        .some((value) => value.toLocaleLowerCase().includes(term));
+      return matchesStatus && matchesSearch;
+    });
+  }, [rows, search, statusFilter]);
 
   async function saveRating(row: HistoryRow, rating: number) {
     if (!profile || savingRatingId) return;
@@ -118,9 +127,19 @@ export default function SupportHistoryTable() {
         placeholder="Search or filter by category"
       />
 
+      <div className={styles.filters} role="group" aria-label="Filter support history by status">
+        {FILTERS.map((item) => <button
+          key={item}
+          type="button"
+          className={statusFilter === item ? `${styles.filterButton} ${styles.filterActive}` : styles.filterButton}
+          aria-pressed={statusFilter === item}
+          onClick={() => setStatusFilter(item)}
+        >{item}</button>)}
+      </div>
+
       {error && <p className={styles.error} role="alert">{error}</p>}
       {loading ? <div className={styles.message}>Loading your support history…</div> : filteredRows.length === 0 ? (
-        <div className={styles.message}>{rows.length ? "No history matches your search." : "Completed or cancelled support requests will appear here."}</div>
+        <div className={styles.message}>{rows.length ? "No history matches your search." : "Your support requests will appear here."}</div>
       ) : (
         <div className={styles.tableWrap}>
           <table className={styles.table}>
@@ -149,7 +168,7 @@ export default function SupportHistoryTable() {
                     </span>
                   ) : <span aria-label="No rating">—</span>}
                 </td>
-                <td><span className={`${styles.status} ${row.status === "Completed" ? styles.statusCompleted : styles.statusCancelled}`}>{row.status}</span></td>
+                <td><RequestStatusBadge status={row.status} /></td>
               </tr>)}
             </tbody>
           </table>

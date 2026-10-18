@@ -5,9 +5,10 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/lib/useCurrentUser";
+import RequestStatusBadge from "@/components/support-requests/RequestStatusBadge";
+import type { SupportRequestStatus } from "@/lib/support-requests/history";
 import styles from "./support-requests.module.css";
 
-type RequestStatus = "Pending" | "Accepted" | "Completed" | "Cancelled" | "Declined";
 type RequestRow = {
   id: string;
   title: string;
@@ -19,10 +20,10 @@ type RequestRow = {
   support_mode: string | null;
   volunteer_id: string | null;
   volunteer_name: string | null;
-  status: RequestStatus;
+  status: SupportRequestStatus;
 };
 
-const FILTERS = ["All", "Pending", "Accepted", "Completed", "Cancelled", "Declined"] as const;
+const FILTERS = ["All", "Pending", "Accepted", "Cancelled", "Declined"] as const;
 type Filter = (typeof FILTERS)[number];
 type ActionMenuState = { requestId: string; left: number; top: number };
 
@@ -83,7 +84,7 @@ export default function SupportRequestsTable() {
       setRequests(rows.map((row) => ({
         ...row,
         id: row.request_id,
-        status: row.status as RequestStatus,
+        status: row.status as SupportRequestStatus,
         volunteer_name: row.volunteer_id ? volunteerNames.get(row.volunteer_id) ?? null : null,
       })));
       setLoading(false);
@@ -215,7 +216,7 @@ export default function SupportRequestsTable() {
                   <td>{request.category}</td>
                   <td>{formatDate(request.created_at)}</td>
                   <td>{request.volunteer_name ?? "—"}</td>
-                  <td><span className={`${styles.status} ${styles[`status${request.status}`]}`}>{request.status}</span></td>
+                  <td><RequestStatusBadge status={request.status} /></td>
                   <td className={styles.actionCell}>
                     <button
                       type="button"

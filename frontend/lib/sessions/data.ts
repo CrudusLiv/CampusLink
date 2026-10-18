@@ -110,6 +110,24 @@ export async function createSession(
   return { ok: true, session: toView(data as SessionRow, context.requestTitle, context.requester, context.volunteer, viewerId) };
 }
 
+/** Complete a scheduled session and its support request atomically through the database RPC. */
+export async function completeSession(db: Db, sessionId: string): Promise<{ ok: true } | { ok: false; error: ApiError }> {
+  const { error } = await db.rpc('complete_session', { p_session_id: sessionId });
+  if (!error) return { ok: true };
+
+  const message = error.message ?? '';
+  if (/SESSION_NOT_FOUND/.test(message)) {
+    return { ok: false, error: { status: 404, error: 'not_found', message: 'Session not found' } };
+  }
+  if (/NOT_PARTICIPANT/.test(message) || error.code === '42501') {
+    return { ok: false, error: { status: 403, error: 'forbidden', message: 'You can only complete your own support sessions' } };
+  }
+  if (/SESSION_NOT_SCHEDULED|REQUEST_NOT_ACCEPTED/.test(message)) {
+    return { ok: false, error: { status: 409, error: 'invalid_status', message: 'Only a scheduled session for an accepted request can be completed' } };
+  }
+  return { ok: false, error: { status: 500, error: 'unknown', message: 'Something went wrong. Please try again.' } };
+}
+
 function toView(
   r: SessionRow,
   requestTitle: string,

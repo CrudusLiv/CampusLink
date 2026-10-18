@@ -16,6 +16,9 @@ export const scheduleSchema = z.object({
 
 export type ScheduleInput = z.infer<typeof scheduleSchema>;
 
+/** PATCH /api/sessions: persist completion for an existing session. */
+export const completeSessionSchema = z.object({ sessionId: z.uuid('Missing or invalid session') });
+
 /** GET /api/sessions?status=Scheduled&upcoming=true */
 export const listQuerySchema = z.object({
   status: z.enum(['Scheduled', 'Completed', 'Cancelled']).optional(),

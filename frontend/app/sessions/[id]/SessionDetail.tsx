@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { Avatar } from "@/components/sessions/Avatar";
-import { fetchSession, updateMockSession } from "@/lib/sessions/client";
+import { fetchSession, persistSessionCompletion, updateMockSession } from "@/lib/sessions/client";
 import { formatDate, formatTime } from "@/lib/sessions/time";
 import type { SessionView } from "@/lib/sessions/types";
 import styles from "./session-detail.module.css";
@@ -24,6 +24,7 @@ export default function SessionDetail({ sessionId }: { sessionId: string }) {
   const [feedback, setFeedback] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [completing, setCompleting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -74,15 +75,33 @@ export default function SessionDetail({ sessionId }: { sessionId: string }) {
     }
   }
 
-  function finishSession(status: "Completed" | "Cancelled") {
+  async function finishSession(status: "Completed" | "Cancelled") {
     setMessage("");
-    saveUpdate({ status }, status === "Completed" ? "Session marked as completed." : "Session cancelled.");
+    setError("");
+    if (status === "Completed") {
+      setCompleting(true);
+      try {
+        const result = await persistSessionCompletion(sessionId);
+        if (!result.ok) {
+          setError(result.message);
+          return;
+        }
+        setSession((current) => current ? { ...current, status: "Completed" } : current);
+        setMessage("Session marked as completed and saved.");
+      } catch {
+        setError("We could not complete this session. Please try again.");
+      } finally {
+        setCompleting(false);
+      }
+      return;
+    }
+    saveUpdate({ status }, "Session cancelled.");
   }
 
   if (loading) return <main className={styles.content}><p className={styles.message}>Loading session…</p></main>;
   if (!session) return (
     <main className={styles.content}>
-      <p className={styles.message}>We couldn't find this session.</p>
+      <p className={styles.message}>We could not find this session.</p>
       <Link className={styles.backLink} href="/sessions">← Back to My Support Sessions</Link>
     </main>
   );
@@ -125,7 +144,9 @@ export default function SessionDetail({ sessionId }: { sessionId: string }) {
               <button className={styles.primaryButton} type="submit">Save new time</button>
             </form>}
 
-            <button className={styles.primaryButton} type="button" onClick={() => finishSession("Completed")}>Mark as completed</button>
+            <button className={styles.primaryButton} type="button" onClick={() => void finishSession("Completed")} disabled={completing}>
+              {completing ? "Saving…" : "Mark as completed"}
+            </button>
           </> : <p className={styles.closedNotice}>This session is {session.status.toLowerCase()}.</p>}
         </section>
 
