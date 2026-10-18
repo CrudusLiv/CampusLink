@@ -13,7 +13,7 @@ describe('mapDbError', () => {
     ['new row violates row-level security policy for table "session"', '42501', 403, 'forbidden'],
     ['violates check constraint "session_meeting_link_https"', '23514', 400, 'validation'],
     ['something unexpected', 'XX000', 500, 'unknown'],
-  ])('maps %s to %i %s', (message, code, status, error) => {
+  ])('maps %s (db code %s) to HTTP %i "%s"', (message, code, status, error) => {
     expect(mapDbError({ message, code })).toMatchObject({ status, error });
   });
 
