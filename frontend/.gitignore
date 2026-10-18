@@ -37,3 +37,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# browser test output (screenshots for the test sheet, Playwright scratch files)
+/tests/e2e/evidence/
+/tests/e2e/.output/

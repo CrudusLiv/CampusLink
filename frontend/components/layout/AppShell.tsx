@@ -27,7 +27,7 @@ const ADMIN_NAV: Item[] = [{ label: "Overview", href: "/dashboard" }, { label: "
 const VOLUNTEER_NAV: Item[] = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Incoming Requests", href: "/volunteer/requests" },
-  { label: "My Sessions", href: "/volunteer/sessions" },
+  { label: "My Sessions", href: "/sessions" },
   { label: "Skills & Availability", href: "/volunteer/setup" },
   { label: "My History", href: "/volunteer/history" },
   { label: "My Profile", href: "/profile" },
@@ -43,7 +43,7 @@ const ADMIN_TABS: Item[] = [{ label: "Overview", href: "/dashboard" }, { label: 
 const VOLUNTEER_TABS: Item[] = [
   { label: "Home", href: "/dashboard" },
   { label: "Requests", href: "/volunteer/requests" },
-  { label: "Sessions", href: "/volunteer/sessions" },
+  { label: "Sessions", href: "/sessions" },
   { label: "Profile", href: "/profile" },
 ];
 

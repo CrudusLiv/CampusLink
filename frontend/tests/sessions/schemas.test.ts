@@ -30,7 +30,7 @@ describe('scheduleSchema', () => {
     ['meetingLink', { meetingLink: 'http://insecure.example' }],
     ['meetingLink', { meetingLink: 'meet.google.com/abc' }],
     ['meetingLink', { meetingLink: 'https://has space.example' }],
-  ])('rejects a bad %s with a field-level message', (field, patch) => {
+  ])('rejects a bad %s (%j) with a field-level message', (field, patch) => {
     const result = scheduleSchema.safeParse({ ...valid, ...patch });
     expect(result.success).toBe(false);
     if (!result.success) expect(fieldErrors(result.error)[field]).toBeTruthy();
