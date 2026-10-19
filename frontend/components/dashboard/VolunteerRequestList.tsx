@@ -4,30 +4,23 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import RequestStatusBadge from "@/components/support-requests/RequestStatusBadge";
-import { supportHistoryQuery, type SupportRequestStatus } from "@/lib/support-requests/history";
+import { canRespondToRequest } from "@/lib/support-requests/request-response";
+import {
+  loadVolunteerRequests,
+  type VolunteerRequestItem,
+  type VolunteerRequestView,
+} from "@/lib/support-requests/volunteer-requests";
 import styles from "./VolunteerDashboard.module.css";
 
-type VolunteerRequest = {
-  id: string;
-  title: string;
-  category: string;
-  requested_date: string;
-  requested_time: string;
-  support_mode: string | null;
-  requester_id: string;
-  requester_name: string;
-  status: SupportRequestStatus;
-};
-
 const VIEW_CONFIG = {
-  incoming: { title: "Incoming Requests", statuses: ["Pending"], empty: "No incoming requests." },
-  sessions: { title: "My Sessions", statuses: ["Accepted"], empty: "No accepted sessions yet." },
+  incoming: { title: "Incoming Requests", empty: "No incoming requests." },
+  sessions: { title: "My Sessions", empty: "No accepted sessions yet." },
   history: { title: "My History", empty: "Your support requests will appear here." },
 } as const;
 
-export default function VolunteerRequestList({ view }: { view: keyof typeof VIEW_CONFIG }) {
+export default function VolunteerRequestList({ view }: { view: VolunteerRequestView }) {
   const { profile } = useCurrentUser();
-  const [items, setItems] = useState<VolunteerRequest[]>([]);
+  const [items, setItems] = useState<VolunteerRequestItem[]>([]);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [respondingId, setRespondingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
@@ -38,31 +31,13 @@ export default function VolunteerRequestList({ view }: { view: keyof typeof VIEW
     let cancelled = false;
 
     async function load() {
-      const historyQuery = view === "history" ? supportHistoryQuery("volunteer", profile!.user_id) : null;
-      const statuses = view === "history" ? historyQuery!.statuses : view === "incoming" ? VIEW_CONFIG.incoming.statuses : VIEW_CONFIG.sessions.statuses;
-      const { data, error } = await supabase
-        .from("support_request")
-        .select("request_id, title, category, requested_date, requested_time, support_mode, requester_id, status")
-        .eq(historyQuery?.ownerColumn ?? "volunteer_id", historyQuery?.ownerId ?? profile!.user_id)
-        .in("status", [...statuses])
-        .order("requested_date", { ascending: true });
+      const result = await loadVolunteerRequests(supabase, view, profile!.user_id);
       if (cancelled) return;
-      if (error) { setState("error"); return; }
-
-      const rows = data ?? [];
-      const requesterIds = [...new Set(rows.map((row) => row.requester_id))];
-      const { data: requesters, error: requesterError } = requesterIds.length
-        ? await supabase.from("users").select("user_id, name").in("user_id", requesterIds)
-        : { data: [], error: null };
-      if (cancelled) return;
-      if (requesterError) { setState("error"); return; }
-      const names = new Map((requesters ?? []).map((requester) => [requester.user_id, requester.name]));
-      setItems(rows.map((row) => ({
-        ...row,
-        id: row.request_id,
-        status: String(row.status) as SupportRequestStatus,
-        requester_name: names.get(row.requester_id) ?? "Student",
-      })));
+      if (result.error) {
+        setState("error");
+        return;
+      }
+      setItems(result.items);
       setState("ready");
     }
 
@@ -71,7 +46,15 @@ export default function VolunteerRequestList({ view }: { view: keyof typeof VIEW
   }, [profile, view]);
 
   async function respondToRequest(requestId: string, status: "Accepted" | "Declined") {
-    if (!profile || respondingId || view !== "incoming") return;
+    const request = items.find((item) => item.id === requestId);
+
+    if (
+      !profile ||
+      respondingId ||
+      view !== "incoming" ||
+      !request ||
+      !canRespondToRequest(request.status, status)
+    ) return;
     setRespondingId(requestId);
     setActionError("");
     const { data, error } = await supabase

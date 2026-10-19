@@ -6,15 +6,8 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { getVolunteerRequestAction, volunteerDirectoryCards } from "@/lib/support-requests/volunteers";
 import styles from "./volunteer-lists.module.css";
-
-type Volunteer = {
-  user_id: string;
-  name: string;
-  photo_url: string | null;
-  faculty: string | null;
-  skills: string[];
-  availability: { day: string; start: string; end: string }[];
-};
+import { matchesVolunteerSearch, matchesVolunteerSkillAndFaculty, matchesWeeklyAvailability } from "@/lib/support-requests/volunteer-search";
+import { loadVolunteerDirectory, type VolunteerDirectoryEntry, } from "@/lib/support-requests/volunteer-directory";
 
 function weekdayFromDate(date: string) {
   if (!date) return "";
@@ -22,18 +15,12 @@ function weekdayFromDate(date: string) {
   return Number.isNaN(parsed.getTime()) ? "" : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][parsed.getDay()];
 }
 
-function timeIsInRange(time: string, start: string, end: string) {
-  if (!time) return true;
-  const selected = time.slice(0, 5);
-  return start.slice(0, 5) <= selected && selected < end.slice(0, 5);
-}
-
 const initials = (name: string) =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join("");
 
 export default function VolunteerDirectory() {
   const router = useRouter();
-  const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
+  const [volunteers, setVolunteers] = useState<VolunteerDirectoryEntry[]>([]);
   const [search, setSearch] = useState("");
   const [skill, setSkill] = useState("");
   const [faculty, setFaculty] = useState("");
@@ -66,70 +53,33 @@ export default function VolunteerDirectory() {
       setLoading(true);
       setError("");
 
-      const [{ data: authData }, { data: volunteerRows, error: volunteerError }] = await Promise.all([
-        supabase.auth.getUser(),
-        supabase.from("volunteer_profile").select("user_id, skills").eq("is_volunteer", true),
-      ]);
+      const result = await loadVolunteerDirectory(supabase);
 
-      if (!cancelled) setCurrentUserId(authData.user?.id ?? null);
+      if (cancelled) return;
 
-      if (volunteerError) {
-        if (!cancelled) setError("We couldn't load the volunteer list. Please try again later.");
-        if (!cancelled) setLoading(false);
-        return;
-      }
+      setCurrentUserId(result.currentUserId);
 
-      const rows = volunteerRows ?? [];
-      if (rows.length === 0) {
-        if (!cancelled) {
-          setVolunteers([]);
-          setLoading(false);
-        }
-        return;
-      }
-
-      const ids = rows.map((row) => row.user_id);
-      const [{ data: profiles, error: profileError }, { data: availability, error: availabilityError }] =
-        await Promise.all([
-          supabase.from("users").select("user_id, name, photo_url, faculty").in("user_id", ids),
-          supabase.from("availability").select("user_id, day_of_week, start_time, end_time").in("user_id", ids),
-        ]);
-
-      if (profileError || availabilityError) {
-        if (!cancelled) setError("We couldn't load volunteer details. Please try again later.");
-        if (!cancelled) setLoading(false);
-        return;
-      }
-
-      const profileById = new Map((profiles ?? []).map((profile) => [profile.user_id, profile]));
-      const availabilityById = new Map<string, Volunteer["availability"]>();
-      (availability ?? []).forEach((slot) => {
-        const slots = availabilityById.get(slot.user_id) ?? [];
-        slots.push({ day: slot.day_of_week, start: slot.start_time, end: slot.end_time });
-        availabilityById.set(slot.user_id, slots);
-      });
-
-      const result = rows.flatMap((row) => {
-        const profile = profileById.get(row.user_id);
-        if (!profile) return [];
-        return [{
-          user_id: row.user_id,
-          name: profile.name,
-          photo_url: profile.photo_url,
-          faculty: profile.faculty,
-          skills: row.skills ?? [],
-          availability: availabilityById.get(row.user_id) ?? [],
-        }];
-      });
-
-      if (!cancelled) {
-        setVolunteers(result);
+      if (result.error === "volunteer-list") {
+        setError("We couldn't load the volunteer list. Please try again later.");
         setLoading(false);
+        return;
       }
+
+      if (result.error === "volunteer-details") {
+        setError("We couldn't load volunteer details. Please try again later.");
+        setLoading(false);
+        return;
+      }
+
+      setVolunteers(result.volunteers);
+      setLoading(false);
     }
 
     loadVolunteers();
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const skills = useMemo(() => [...new Set(volunteers.flatMap((volunteer) => volunteer.skills))].sort(), [volunteers]);
@@ -140,21 +90,16 @@ export default function VolunteerDirectory() {
   const days = useMemo(() => [...new Set(volunteers.flatMap((volunteer) => volunteer.availability.map((slot) => slot.day)))], [volunteers]);
 
   const filtered = volunteers.filter((volunteer) => {
-    const query = search.trim().toLowerCase();
-    const matchesSearch = !query || volunteer.name.toLowerCase().includes(query) ||
-      (volunteer.faculty ?? "").toLowerCase().includes(query) ||
-      volunteer.skills.some((item) => item.toLowerCase().includes(query));
-    return matchesSearch && (!skill || volunteer.skills.includes(skill)) &&
-      (!faculty || volunteer.faculty === faculty) && (!day || volunteer.availability.some((slot) =>
-        slot.day === day && timeIsInRange(time, slot.start, slot.end)
-      ));
+    const matchesSearch = matchesVolunteerSearch(volunteer, search);
+
+    return matchesSearch && matchesVolunteerSkillAndFaculty(volunteer, skill, faculty) && matchesWeeklyAvailability(volunteer.availability, day, time);
   });
 
   const visibleVolunteerCards = volunteerDirectoryCards(filtered, currentUserId);
   const selectedVolunteer = volunteers.find((volunteer) => volunteer.user_id === selectedVolunteerId);
   const selectedVolunteerAction = selectedVolunteer ? getVolunteerRequestAction(selectedVolunteer.user_id, currentUserId) : null;
 
-  function requestUrl(volunteer: Volunteer) {
+  function requestUrl(volunteer: VolunteerDirectoryEntry) {
     const params = new URLSearchParams();
     const category = volunteer.skills.includes(skill) ? skill : volunteer.skills[0] ?? skill;
     params.set("volunteerId", volunteer.user_id);
@@ -167,7 +112,7 @@ export default function VolunteerDirectory() {
     return `/sessions/ask-for-support?${params.toString()}`;
   }
 
-  function profileUrl(volunteer: Volunteer) {
+  function profileUrl(volunteer: VolunteerDirectoryEntry) {
     const params = new URLSearchParams();
     if (skill) params.set("skill", skill);
     if (requestDate) params.set("date", requestDate);
