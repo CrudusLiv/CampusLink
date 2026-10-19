@@ -272,11 +272,12 @@ export default function LoginPage() {
                 </Link>
               </form>
 
+              <div className={styles.divider}>or</div>
+                <button type="button" onClick={handleMicrosoft} className={styles.microsoftButton}>
+                  Sign in with Microsoft (HELP account)
+                </button>
+
               <p className={styles.switch}>
-                              <div className={styles.divider}>or</div>
-              <button type="button" onClick={handleMicrosoft} className={styles.microsoftButton}>
-                Sign in with Microsoft (HELP account)
-              </button>
                 New to CampusLink? <Link href="/register">Create an account</Link>
               </p>
             </>

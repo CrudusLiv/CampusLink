@@ -6,7 +6,6 @@
 
 import { useState, FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import styles from "./register.module.css";
 
@@ -78,7 +77,6 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false); // true while waiting for Supabase
   const [serverError, setServerError] = useState(""); // error returned by Supabase
   const [checkEmail, setCheckEmail] = useState(false); // account created, waiting for email confirmation
-  const router = useRouter();
 
   // Updates one field when the user types
   function handleChange(field: keyof FormData, value: string) {
@@ -125,14 +123,12 @@ export default function RegisterPage() {
       return;
     }
 
+    // First login must go through the emailed code (2FA), so don't keep this session
     if (data.session) {
-      // Email confirmation is turned off, so the user is already logged in
-      router.push("/dashboard");
-    } else {
-      // Email confirmation is turned on, so the user must confirm first
-      setCheckEmail(true);
+      await supabase.auth.signOut({ scope: "local" });
     }
-  }
+    setCheckEmail(true);
+    }
 
   return (
     <div className={styles.page}>
@@ -151,7 +147,7 @@ export default function RegisterPage() {
 
           {checkEmail && (
             <p className={styles.success}>
-              Account created. Check your university inbox for a confirmation email, then log in.
+              Account created. <Link href="/login">Log in</Link> with your email and password, and we'll send a code to your inbox.
             </p>
           )}
 
@@ -176,7 +172,7 @@ export default function RegisterPage() {
               type="email"
               value={form.email}
               error={errors.email}
-              placeholder="bxxxxxxx@helplive.edu.my"
+              placeholder="b2400089@helplive.edu.my"
               onChange={(v) => handleChange("email", v)}
             />
             <Field
