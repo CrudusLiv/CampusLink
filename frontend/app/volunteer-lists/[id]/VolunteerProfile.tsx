@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { getVolunteerRequestAction } from "@/lib/support-requests/volunteers";
 import styles from "./volunteer-profile.module.css";
 
 type Profile = {
@@ -21,6 +22,7 @@ export default function VolunteerProfile({ userId }: { userId: string }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [skills, setSkills] = useState<string[]>([]);
   const [availability, setAvailability] = useState<Slot[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [returnHref, setReturnHref] = useState("/volunteer-lists");
@@ -34,14 +36,16 @@ export default function VolunteerProfile({ userId }: { userId: string }) {
     let cancelled = false;
 
     async function load() {
-      const [{ data: person, error: profileError }, { data: volunteer, error: volunteerError }, { data: slots, error: slotsError }] =
+      const [{ data: authData }, { data: person, error: profileError }, { data: volunteer, error: volunteerError }, { data: slots, error: slotsError }] =
         await Promise.all([
+          supabase.auth.getUser(),
           supabase.from("users").select("user_id, name, photo_url, faculty, bio").eq("user_id", userId).maybeSingle(),
           supabase.from("volunteer_profile").select("skills, is_volunteer").eq("user_id", userId).maybeSingle(),
           supabase.from("availability").select("day_of_week, start_time, end_time").eq("user_id", userId),
         ]);
 
       if (cancelled) return;
+      setCurrentUserId(authData.user?.id ?? null);
       if (profileError || volunteerError || slotsError || !person || !volunteer?.is_volunteer) {
         setError("This volunteer profile is unavailable.");
       } else {
@@ -63,6 +67,7 @@ export default function VolunteerProfile({ userId }: { userId: string }) {
       return slots.length ? [`${day}: ${slots.map((slot) => `${slot.start_time.slice(0, 5)}–${slot.end_time.slice(0, 5)}`).join(", ")}`] : [];
     });
   }, [availability]);
+  const requestAction = getVolunteerRequestAction(userId, currentUserId);
 
   function handleMakeRequest() {
     if (!profile) return;
@@ -110,7 +115,8 @@ export default function VolunteerProfile({ userId }: { userId: string }) {
         <aside className={styles.availabilityPanel}>
           <h2>Availability</h2>
           {weeklyAvailability.length ? <ul>{weeklyAvailability.map((item) => <li key={item}>{item}</li>)}</ul> : <p className={styles.muted}>Weekly availability hasn&apos;t been added.</p>}
-          <button type="button" className={styles.requestButton} onClick={handleMakeRequest}>Make a Request</button>
+          <button type="button" className={`${styles.requestButton} ${requestAction.disabled ? styles.requestButtonDisabled : ""}`} disabled={requestAction.disabled} onClick={handleMakeRequest}>Make a Request</button>
+          {requestAction.message && <p className={styles.selfRequestError} role="alert">{requestAction.message}</p>}
         </aside>
       </div>
     </main>
