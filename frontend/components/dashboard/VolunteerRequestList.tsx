@@ -19,7 +19,7 @@ type VolunteerRequest = {
   support_mode: string | null;
   requester_id: string;
   requester_name: string;
-  status: string;
+  status: SupportRequestStatus;
   isFree: boolean;
 };
 
