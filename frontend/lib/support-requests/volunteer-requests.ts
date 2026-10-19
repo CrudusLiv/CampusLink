@@ -46,7 +46,7 @@ export async function loadVolunteerRequests(
     .select("request_id, title, category, requested_date, requested_time, support_mode, requester_id, status")
     .eq(ownerColumn, historyQuery?.ownerId ?? volunteerId)
     .in("status", statuses)
-    .order("requested_date", { ascending: true });
+    .order("requested_date", { ascending: view !== "history" });
 
   if (error) return { items: [], error: "requests" };
 
