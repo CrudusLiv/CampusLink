@@ -201,7 +201,8 @@ export default function LoginPage() {
     } catch {
       // ignore storage errors
     }
-    router.push("/dashboard");
+    // Full page load so the dashboard reads the new session from storage
+  window.location.assign("/dashboard");
   }
 
   async function handleResend() {
