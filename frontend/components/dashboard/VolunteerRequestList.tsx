@@ -6,6 +6,8 @@ import { useCurrentUser } from "@/lib/useCurrentUser";
 import { scheduleSession } from "@/lib/sessions/client";
 import { generateSlots } from "@/lib/sessions/slots";
 import { SUPPORT_MODES, type DayOfWeek } from "@/lib/sessions/types";
+import RequestStatusBadge from "@/components/support-requests/RequestStatusBadge";
+import { supportHistoryQuery, type SupportRequestStatus } from "@/lib/support-requests/history";
 import styles from "./VolunteerDashboard.module.css";
 
 type VolunteerRequest = {
@@ -27,7 +29,7 @@ const requestedIso = (date: string, time: string) => new Date(`${date}T${time.sl
 const VIEW_CONFIG = {
   incoming: { title: "Incoming Requests", statuses: ["Pending"], empty: "No incoming requests." },
   sessions: { title: "My Sessions", statuses: ["Accepted"], empty: "No accepted sessions yet." },
-  history: { title: "My History", statuses: ["Completed", "Cancelled", "Declined"], empty: "Your completed, cancelled, and declined requests will appear here." },
+  history: { title: "My History", empty: "Your support requests will appear here." },
 } as const;
 
 export default function VolunteerRequestList({ view }: { view: keyof typeof VIEW_CONFIG }) {
@@ -43,11 +45,13 @@ export default function VolunteerRequestList({ view }: { view: keyof typeof VIEW
     let cancelled = false;
 
     async function load() {
+      const historyQuery = view === "history" ? supportHistoryQuery("volunteer", profile!.user_id) : null;
+      const statuses = view === "history" ? historyQuery!.statuses : view === "incoming" ? VIEW_CONFIG.incoming.statuses : VIEW_CONFIG.sessions.statuses;
       const { data, error } = await supabase
         .from("support_request")
         .select("request_id, title, category, requested_date, requested_time, support_mode, requester_id, status")
-        .eq("volunteer_id", profile!.user_id)
-        .in("status", [...config.statuses])
+        .eq(historyQuery?.ownerColumn ?? "volunteer_id", historyQuery?.ownerId ?? profile!.user_id)
+        .in("status", [...statuses])
         .order("requested_date", { ascending: true });
       if (cancelled) return;
       if (error) { setState("error"); return; }
@@ -77,7 +81,7 @@ export default function VolunteerRequestList({ view }: { view: keyof typeof VIEW
       setItems(rows.map((row) => ({
         ...row,
         id: row.request_id,
-        status: String(row.status),
+        status: String(row.status) as SupportRequestStatus,
         requester_name: names.get(row.requester_id) ?? "Student",
         isFree: view !== "incoming" || (freeSlots.get(row.request_id)?.has(requestedIso(row.requested_date, row.requested_time)) ?? false),
       })));
@@ -86,7 +90,7 @@ export default function VolunteerRequestList({ view }: { view: keyof typeof VIEW
 
     load();
     return () => { cancelled = true; };
-  }, [profile, config.statuses]);
+  }, [profile, view]);
 
   async function respondToRequest(requestId: string, status: "Accepted" | "Declined") {
     if (!profile || respondingId || view !== "incoming") return;
@@ -123,7 +127,7 @@ export default function VolunteerRequestList({ view }: { view: keyof typeof VIEW
     <main className={styles.content}>
       {actionError && <p className={styles.error} role="alert">{actionError}</p>}
       {state === "loading" ? <p className={styles.empty}>Loading…</p> : state === "error" ? (
-        <p className={styles.error} role="alert">We couldn't load this list. Check that the volunteer dashboard migration has been applied.</p>
+        <p className={styles.error} role="alert">We couldn&apos;t load this list. Check that the volunteer dashboard migration has been applied.</p>
       ) : items.length === 0 ? <p className={styles.empty}>{config.empty}</p> : (
         <ul className={styles.list}>
           {items.map((item) => <li key={item.id} className={styles.requestCard}>
@@ -135,7 +139,7 @@ export default function VolunteerRequestList({ view }: { view: keyof typeof VIEW
             {view === "incoming" ? <div className={styles.requestActions}>
               <button type="button" className={styles.acceptButton} disabled={respondingId !== null || !item.isFree} title={item.isFree ? undefined : "You are not available at the requested time"} onClick={() => respondToRequest(item.id, "Accepted")}>{respondingId === item.id ? "…" : item.isFree ? "Accept" : "Not available"}</button>
               <button type="button" className={styles.declineButton} disabled={respondingId !== null} onClick={() => respondToRequest(item.id, "Declined")}>Decline</button>
-            </div> : <span className={styles.status}>{item.status}</span>}
+            </div> : <RequestStatusBadge status={item.status} />}
           </li>)}
         </ul>
       )}

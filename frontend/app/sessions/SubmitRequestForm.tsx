@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { SUBJECTS } from "@/lib/categories";
 import { ASK_SUPPORT_DRAFT_KEY } from "@/lib/askSupportDraft";
 import { supabase } from "@/lib/supabaseClient";
+import { isOwnVolunteer, isSelfVolunteerConstraintError, withoutOwnVolunteer } from "@/lib/support-requests/volunteers";
 import styles from "./SubmitRequestForm.module.css";
 
 type AutoMatchVolunteer = {
@@ -153,6 +154,14 @@ export function SubmitRequestForm({ mode = "create", request }: { mode?: FormMod
     setHasMatched(true);
     setMatching(true);
 
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (requestId !== matchRequestId.current) return;
+    if (authError || !authData.user) {
+      setMatchError("Please log in again before finding volunteers.");
+      setMatching(false);
+      return;
+    }
+
     const { data: volunteerRows, error: volunteerError } = await supabase
       .from("volunteer_profile")
       .select("user_id, skills")
@@ -166,7 +175,7 @@ export function SubmitRequestForm({ mode = "create", request }: { mode?: FormMod
       return;
     }
 
-    const eligibleRows = (volunteerRows ?? []).filter((row) =>
+    const eligibleRows = withoutOwnVolunteer(volunteerRows ?? [], authData.user.id).filter((row) =>
       !selectedCategory || (row.skills ?? []).includes(selectedCategory)
     );
     if (eligibleRows.length === 0) {
@@ -254,6 +263,13 @@ export function SubmitRequestForm({ mode = "create", request }: { mode?: FormMod
       return;
     }
 
+    const volunteerId = chosenVolunteer?.id ?? request?.volunteer_id ?? null;
+    if (isOwnVolunteer(volunteerId, authData.user.id)) {
+      setSubmitError("You cannot select yourself as a volunteer.");
+      setLoading(false);
+      return;
+    }
+
     const requestValues = {
       title: title.trim(),
       description: description.trim(),
@@ -261,7 +277,7 @@ export function SubmitRequestForm({ mode = "create", request }: { mode?: FormMod
       requested_date: date,
       requested_time: time,
       support_mode: supportMode,
-      volunteer_id: chosenVolunteer?.id ?? request?.volunteer_id ?? null,
+      volunteer_id: volunteerId,
       preferred_time: new Date(`${date}T${time}`).toISOString(),
     };
     const result = mode === "edit" && request
@@ -271,16 +287,26 @@ export function SubmitRequestForm({ mode = "create", request }: { mode?: FormMod
         .eq("status", "Pending")
         .select("request_id")
         .maybeSingle()
-      : await supabase.from("support_request").insert({
-        requester_id: authData.user.id,
-        ...requestValues,
-        status: "Pending",
-      });
+      : await (async () => {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const response = await fetch("/api/support-requests", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(sessionData.session?.access_token ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
+          },
+          body: JSON.stringify(requestValues),
+        });
+        const payload = await response.json().catch(() => ({}));
+        return { data: null, error: response.ok ? null : { code: response.status === 400 && payload.fields?.volunteer_id === "You cannot select yourself as a volunteer." ? "SELF_VOLUNTEER" : "API_ERROR", message: payload.message ?? "Request submission failed.", details: "" } };
+      })();
     const error = result.error;
     setLoading(false);
     if (error) {
       console.error("Support request save failed:", { code: error.code, message: error.message, details: error.details });
-      if (error.code === "42P01" || error.code === "PGRST205") {
+      if (error.code === "SELF_VOLUNTEER" || isSelfVolunteerConstraintError(error)) {
+        setSubmitError("You cannot select yourself as a volunteer.");
+      } else if (error.code === "42P01" || error.code === "PGRST205") {
         setSubmitError("Support request storage is not set up yet. Apply the support_request migration, then try again.");
       } else if (error.code === "42501") {
         setSubmitError("Your account doesn't have permission to submit this request. Check the support_request access policies.");

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { getVolunteerRequestAction, volunteerDirectoryCards } from "@/lib/support-requests/volunteers";
 import styles from "./volunteer-lists.module.css";
 
 type Volunteer = {
@@ -41,6 +42,7 @@ export default function VolunteerDirectory() {
   const [requestDate, setRequestDate] = useState("");
   const [supportMode, setSupportMode] = useState("");
   const [selectedVolunteerId, setSelectedVolunteerId] = useState("");
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -64,10 +66,12 @@ export default function VolunteerDirectory() {
       setLoading(true);
       setError("");
 
-      const { data: volunteerRows, error: volunteerError } = await supabase
-        .from("volunteer_profile")
-        .select("user_id, skills")
-        .eq("is_volunteer", true);
+      const [{ data: authData }, { data: volunteerRows, error: volunteerError }] = await Promise.all([
+        supabase.auth.getUser(),
+        supabase.from("volunteer_profile").select("user_id, skills").eq("is_volunteer", true),
+      ]);
+
+      if (!cancelled) setCurrentUserId(authData.user?.id ?? null);
 
       if (volunteerError) {
         if (!cancelled) setError("We couldn't load the volunteer list. Please try again later.");
@@ -146,7 +150,9 @@ export default function VolunteerDirectory() {
       ));
   });
 
+  const visibleVolunteerCards = volunteerDirectoryCards(filtered, currentUserId);
   const selectedVolunteer = volunteers.find((volunteer) => volunteer.user_id === selectedVolunteerId);
+  const selectedVolunteerAction = selectedVolunteer ? getVolunteerRequestAction(selectedVolunteer.user_id, currentUserId) : null;
 
   function requestUrl(volunteer: Volunteer) {
     const params = new URLSearchParams();
@@ -223,7 +229,7 @@ export default function VolunteerDirectory() {
         </div>
       ) : (
         <ul className={styles.grid}>
-          {filtered.map((volunteer) => (
+          {visibleVolunteerCards.map(({ volunteer }) => (
             <li
               className={`${styles.card} ${selectedVolunteerId === volunteer.user_id ? styles.cardSelected : ""}`}
               key={volunteer.user_id}
@@ -258,7 +264,10 @@ export default function VolunteerDirectory() {
       {selectedVolunteer && <aside className={styles.selectionBar} aria-label="Selected volunteer actions">
         <p className={styles.selectionName}>Selected: <strong>{selectedVolunteer.name}</strong></p>
         <div className={styles.selectionActions}>
-          <button type="button" className={styles.primaryAction} onClick={() => router.push(requestUrl(selectedVolunteer))}>Make a request</button>
+          <div className={styles.requestActionGroup}>
+            <button type="button" className={`${styles.primaryAction} ${selectedVolunteerAction?.disabled ? styles.disabledAction : ""}`} disabled={selectedVolunteerAction?.disabled} onClick={() => router.push(requestUrl(selectedVolunteer))}>Make a request</button>
+            {selectedVolunteerAction?.message && <p className={styles.selfRequestError} role="alert">{selectedVolunteerAction.message}</p>}
+          </div>
           <button type="button" className={styles.secondaryAction} onClick={() => router.push(profileUrl(selectedVolunteer))}>View volunteer profile</button>
         </div>
       </aside>}
