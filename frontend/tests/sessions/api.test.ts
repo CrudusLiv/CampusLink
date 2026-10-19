@@ -5,6 +5,7 @@ const authenticate = vi.fn();
 const getAcceptedRequest = vi.fn();
 const createSession = vi.fn();
 const listSessions = vi.fn();
+const completeSession = vi.fn();
 
 vi.mock('@/lib/sessions/api', async (original) => ({
   ...(await original<typeof import('@/lib/sessions/api')>()),
@@ -14,9 +15,10 @@ vi.mock('@/lib/sessions/wrappers', () => ({ getAcceptedRequest: (...a: unknown[]
 vi.mock('@/lib/sessions/data', () => ({
   createSession: (...a: unknown[]) => createSession(...a),
   listSessions: (...a: unknown[]) => listSessions(...a),
+  completeSession: (...a: unknown[]) => completeSession(...a),
 }));
 
-const { GET, POST } = await import('@/app/api/sessions/route');
+const { GET, PATCH, POST } = await import('@/app/api/sessions/route');
 
 const ME = { id: 'a1b2c3d4-0001-4000-8000-000000000001', name: 'Me', photoUrl: null, isVolunteer: false };
 const OTHER = { id: 'a1b2c3d4-0002-4000-8000-000000000002', name: 'Other', photoUrl: null };
@@ -25,6 +27,7 @@ const BODY = { requestId: CONTEXT.requestId, scheduledDatetime: '2026-10-19T00:0
 
 const post = (body: unknown) => POST(new Request('http://x/api/sessions', { method: 'POST', body: JSON.stringify(body) }));
 const get = (qs = '') => GET(new Request(`http://x/api/sessions${qs}`));
+const patch = (body: unknown) => PATCH(new Request('http://x/api/sessions', { method: 'PATCH', body: JSON.stringify(body) }));
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -103,5 +106,35 @@ describe('GET /api/sessions', () => {
     const res = await get();
     expect(res.status).toBe(500);
     expect(JSON.stringify(await res.json())).not.toMatch(/secret detail/);
+  });
+});
+
+describe('PATCH /api/sessions', () => {
+  it('401 when not signed in', async () => {
+    authenticate.mockResolvedValue(null);
+    expect((await patch({ sessionId: 'c1b2c3d4-0001-4000-8000-000000000001' })).status).toBe(401);
+  });
+
+  it('400 for an invalid session id without calling the database helper', async () => {
+    const res = await patch({ sessionId: 'not-a-uuid' });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe('validation');
+    expect(completeSession).not.toHaveBeenCalled();
+  });
+
+  it('calls the persistence helper and returns success', async () => {
+    const sessionId = 'c1b2c3d4-0001-4000-8000-000000000001';
+    completeSession.mockResolvedValue({ ok: true });
+    const res = await patch({ sessionId });
+    expect(res.status).toBe(200);
+    expect(completeSession).toHaveBeenCalledWith({}, sessionId);
+    expect(await res.json()).toEqual({ success: true });
+  });
+
+  it('preserves authorization and state conflict errors', async () => {
+    completeSession.mockResolvedValue({ ok: false, error: { status: 403, error: 'forbidden', message: 'You can only complete your own support sessions' } });
+    const res = await patch({ sessionId: 'c1b2c3d4-0001-4000-8000-000000000001' });
+    expect(res.status).toBe(403);
+    expect((await res.json()).message).toBe('You can only complete your own support sessions');
   });
 });

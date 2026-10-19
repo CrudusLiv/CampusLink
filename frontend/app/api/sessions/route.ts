@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
 import { authenticate, fail, unauthorized } from '@/lib/sessions/api';
-import { createSession, listSessions } from '@/lib/sessions/data';
-import { fieldErrors, listQuerySchema, scheduleSchema } from '@/lib/sessions/schemas';
+import { completeSession, createSession, listSessions } from '@/lib/sessions/data';
+import { completeSessionSchema, fieldErrors, listQuerySchema, scheduleSchema } from '@/lib/sessions/schemas';
 import { getAcceptedRequest } from '@/lib/sessions/wrappers';
 
 // Flow for every handler: validate input (Zod) -> check the caller -> query as the caller (RLS applies).
-// PATCH (reschedule / cancel / complete) lands here in Iteration 2.
 
 export async function GET(req: Request) {
   const auth = await authenticate(req);
@@ -43,4 +42,22 @@ export async function POST(req: Request) {
   const result = await createSession(auth.db, auth.me.id, input.data, context);
   if (!result.ok) return fail(result.error.status, result.error.error, result.error.message);
   return NextResponse.json({ session: result.session }, { status: 201 });
+}
+
+export async function PATCH(req: Request) {
+  const auth = await authenticate(req);
+  if (!auth) return unauthorized();
+
+  const body = await req.json().catch(() => null);
+  const input = completeSessionSchema.safeParse(body);
+  if (!input.success) return fail(400, 'validation', 'Please provide a valid session', fieldErrors(input.error));
+
+  try {
+    const result = await completeSession(auth.db, input.data.sessionId);
+    if (!result.ok) return fail(result.error.status, result.error.error, result.error.message);
+    return NextResponse.json({ success: true });
+  } catch (e) {
+    console.error('PATCH /api/sessions failed:', e instanceof Error ? e.message : e);
+    return fail(500, 'unknown', 'We could not complete this session. Please try again.');
+  }
 }

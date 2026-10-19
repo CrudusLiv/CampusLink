@@ -84,3 +84,12 @@ export async function scheduleSession(input: ScheduleInput): Promise<ScheduleRes
     message: String(body?.message ?? 'Something went wrong. Please try again.'),
   };
 }
+
+export type CompletionResult = { ok: true } | { ok: false; message: string };
+
+/** Persist completion through the authenticated API and database transaction. */
+export async function persistSessionCompletion(sessionId: string): Promise<CompletionResult> {
+  const { status, body } = await api('/api/sessions', { method: 'PATCH', body: { sessionId } });
+  if (status === 200) return { ok: true };
+  return { ok: false, message: String(body?.message ?? 'Something went wrong. Please try again.') };
+}
