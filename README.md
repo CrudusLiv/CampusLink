@@ -13,7 +13,8 @@ Built for **BIT216 Software Engineering Principles** as a three-person team proj
 | Become a volunteer, set skills and weekly availability | Working |
 | Ask for support: submit, edit and cancel requests; browse volunteers | Working |
 | Volunteer: see incoming requests, accept or decline | Working |
-| **Schedule a support session** from an accepted request (slot picker, mode, optional meeting link, double-booking protection) | Working |
+| **Accepting a request books the session** at the time the requester chose; Accept is blocked when the volunteer is not free then | Working |
+| **Schedule a support session by hand** from an accepted request (slot picker, mode, optional meeting link, double-booking protection). Used when auto-booking fails, and the only way to add a meeting link | Working |
 | **My Support Sessions**: upcoming list, soonest first, "Within 24h" highlight, empty/loading/error states | Working |
 | Reschedule, cancel, mark completed, star rating on a session | **Prototype only.** Saved in the browser, not the database |
 | Admin dashboard and user registrations | **Placeholder only** |
@@ -41,6 +42,25 @@ documentation/       design, requirements, project plan, testing (in progress)
 .github/workflows/   CI
 ```
 
+## Using the website
+
+Open the site (locally `http://localhost:3000`, or the Vercel URL). Sign in with an `@helplive.edu.my` account: email and password plus the emailed code, or **Sign in with Microsoft (HELP account)**. New accounts register first.
+
+**As a student (Help Seeker)**
+1. **Ask for Support** (or **Submit New Request** on the dashboard): pick a category, write a title and description, choose a date, time and support mode (Online, In-Person or Chat), and optionally choose a volunteer.
+2. **My Support Requests** shows each request and its status (Pending, Accepted, Declined, Cancelled). You can edit or cancel a Pending request.
+3. Once the volunteer accepts, the session is booked for the time you chose. It appears under **Upcoming sessions** on the dashboard and on **My Support Sessions**, with the volunteer's name, date, time and mode. Sessions starting within 24 hours are highlighted.
+
+**As a volunteer**
+1. Open **My Profile** and switch to **Volunteer**. The first time, go to **Skills & Availability** and save your weekly availability. Sessions can only be booked inside it.
+2. **Incoming Requests** lists Pending requests sent to you. **Accept** books the session at the requested time. It shows **Not available** (disabled) when you are outside your availability or already booked at that time. **Decline** rejects the request.
+3. **My Sessions** shows your upcoming sessions and any accepted request that still has no session (for example if booking failed). Click **Schedule session** to pick a free time, a mode and an optional https meeting link, then **Confirm Support Session**.
+
+**Rules to know**
+- Times are one-hour slots in Kuala Lumpur time. A request for a time that is not on the hour is shown as Not available.
+- A person cannot be booked twice at the same time, across all their requests. The message is "That time is no longer available, please pick a different time".
+- A session booked by Accept has no meeting link. To add a link, schedule by hand.
+
 ## Running it locally
 
 You need **Node 22+** and access to the team's Supabase project.
@@ -64,6 +84,20 @@ npm run dev          # http://localhost:3000
 ```
 
 The first visit to each page is slow in development because Next compiles on demand.
+
+### Browser tests (Playwright)
+
+These sign in as a test account and drive the real site, so they need the app and a database in the starting state below. They are not run by CI (the login needs an emailed code, so the tests sign in through the Supabase API instead).
+
+```bash
+cd frontend
+npx playwright install chromium            # once
+CL_EMAIL=<test email> CL_PW=<test password> npm run test:e2e      # PowerShell: $env:CL_EMAIL="..."; $env:CL_PW="..."; npm run test:e2e
+```
+
+The email and password are read from the environment and never stored in the repo. Screenshots are saved to `frontend/tests/e2e/evidence/` (git-ignored), one file per test case, for the test documents.
+
+**Test data.** The tests use a fake account, "Sessions Test Seeker", and a volunteer test account who is available on Mondays. The cases need: a Pending request for a free time (Monday), a Pending request for a time outside the volunteer's availability (another weekday), and an Accepted request with no session. Accepting a request in TCUC3_8 books real sessions, so **reset the data before every re-run**: delete the test sessions (`delete from public.session where request_id::text like 'b1b2c3d4-000%'`) and set the Pending requests back to Pending. The request dates must stay in the future. A case skips, rather than fails, when its data is missing.
 
 ### Other commands
 
@@ -97,7 +131,7 @@ If someone applied a migration by pasting it into the SQL editor, Supabase will 
 
 ## How sessions work
 
-- A session is created from an **accepted** support request, by either the requester or the volunteer.
+- A session is created from an **accepted** support request. Normally it is booked automatically when the volunteer clicks Accept, at the time the requester chose. If that fails, the request stays Accepted and either person can schedule it by hand.
 - Offered times come from the volunteer's weekly availability, in **one-hour slots**, read as **Asia/Kuala_Lumpur** time. Everything is stored in UTC.
 - Neither person can be booked at overlapping times, across all their requests. A request can have only one scheduled session at a time.
 - These rules are enforced **in the database** (a trigger plus RLS policies), so they hold even if someone skips the app and talks to Supabase directly. The API turns database errors into clear messages (409 "That time is no longer available, please pick a different time").
@@ -125,7 +159,8 @@ To put the upcoming list on a dashboard, render `<UpcomingSessions />` from `fro
 
 - Lint reports about 17 errors, mostly in pages that load data inside effects and a few unescaped apostrophes. They do not affect the build.
 - The session detail page (`/sessions/[id]`) saves reschedule, cancel, complete and rating to browser storage only. They need real database writes and the `feedback` table.
-- The volunteer sidebar's "My Sessions" goes to a separate list of accepted requests, not to `/sessions`.
+- Sessions booked by Accept have no meeting link, and In-Person sessions have no venue field. A link or venue step is still to be designed.
+- The Accept button lives in Darryl's volunteer dashboard (`components/dashboard/VolunteerRequestList.tsx`) and calls the sessions API to book the session.
 - `npm audit` reports vulnerabilities in dependencies that have not been reviewed yet.
 
 ## Team

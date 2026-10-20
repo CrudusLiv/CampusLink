@@ -3,8 +3,7 @@ import { evidence, signIn } from './helpers';
 
 // Use case 3: scheduling a support session (US1) and viewing upcoming sessions (US2).
 // Case IDs match the Excel test sheet. Each screenshot is saved as tests/e2e/evidence/<ID><letter>.png.
-// TCUC3_8 needs an accepted request between two people; without one it skips instead of failing.
-// TCUC3_8 BOOKS a real session in the project database, so clean up afterwards (see the README).
+// TCUC3_8 ACCEPTS a real request, which books a session in the project database: reset the test data before a re-run (see the README).
 
 test.describe.configure({ mode: 'serial' });
 
@@ -24,48 +23,61 @@ async function settled() {
   await expect(page.getByText(/^Loading your/)).toHaveCount(0, { timeout: 60_000 });
 }
 
-test('TCUC3_8 schedule a session: free slots and modes, confirmation, and a refused double booking', async () => {
-  await page.goto('/sessions');
+test('TCUC3_8 accepting a request books the session at the requested time; a busy or unavailable time is blocked; a booked time is refused', async () => {
+  // Test data (see the README): request 1 is Pending for a free time, request 2 is Pending for a time the volunteer is
+  // not available, request 4 is Accepted with no session yet. Skips, not fails, when the data is not in that state.
+  await page.goto('/volunteer/requests');
   await settled();
-  const buttons = page.getByRole('link', { name: 'Schedule session' });
-  test.skip((await buttons.count()) < 2, 'Needs two accepted requests between the same two people (test data).');
-  const ids = await buttons.evaluateAll((as) => as.map((a) => new URL((a as HTMLAnchorElement).href).searchParams.get('requestId') ?? ''));
+  const free = page.locator('li', { hasText: 'Sessions test: Java help' });
+  const blocked = page.locator('li', { hasText: 'Sessions test: SQL joins' });
+  test.skip((await free.count()) === 0, 'Needs the Pending test request "Java help" assigned to this volunteer.');
 
-  // 8a: the form offers the volunteer's free slots and the three modes
-  await page.goto(`/sessions/schedule?requestId=${ids[0]}`);
-  const times = page.locator('[aria-label^="Choose a time"] button');
-  await expect(times.first()).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByLabel('In-Person')).toBeVisible();
-  await expect(page.getByLabel('Chat')).toBeVisible();
-  await page.getByLabel('Online').check();
-  await expect(page.locator('#meetingLink')).toBeVisible();
+  // 8a: Accept is offered for a free time and blocked ("Not available") for a time outside the availability
+  await expect(free.getByRole('button', { name: 'Accept' })).toBeEnabled();
+  await expect(blocked.getByRole('button', { name: 'Not available' })).toBeDisabled();
   await evidence(page, 'TCUC3_8a');
 
-  // 8b: confirming shows the summary with both participants
-  await times.first().click();
-  await page.locator('#meetingLink').fill('https://meet.google.com/abc-defg-hij');
-  await page.getByRole('button', { name: /Confirm Support Session/ }).click();
-  await expect(page.getByText('Support Session scheduled')).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByText(/\(Help Seeker\)/)).toBeVisible();
-  await expect(page.getByText(/\(Volunteer\)/)).toBeVisible();
+  // 8b: Accept books the session straight away, at the time the requester chose, without a Schedule step
+  await free.getByRole('button', { name: 'Accept' }).click();
+  await expect(free).toHaveCount(0, { timeout: 60_000 });
+  await page.goto('/sessions');
+  await settled();
+  const booked = page.getByText('Sessions test: Java help').first();
+  await expect(booked).toBeVisible();
+  await booked.scrollIntoViewIfNeeded();
+  await expect(page.locator('a[href*="b1b2c3d4-0001"]')).toHaveCount(0); // request 1 no longer waits for a time
   await evidence(page, 'TCUC3_8b');
   const list = await page.request.get('/api/sessions?status=Scheduled&upcoming=true', { headers: { Authorization: `Bearer ${accessToken}` } });
   const bookedIso: string = (await list.json()).sessions[0].scheduledDatetime;
+  expect(bookedIso).toBe('2026-10-26T02:00:00.000Z'); // 10:00 Kuala Lumpur
 
-  // 8c: even if the screen still offers the booked time (two people at once), the server refuses it
+  // 8c: the manual form is the fallback; even if it still offers the booked time (two people at once), the server refuses it
+  const requestId = 'b1b2c3d4-0004-4000-8000-000000000004';
+  await expect(page.locator(`a[href*="${requestId}"]`)).toBeVisible();
   await page.route('**/api/sessions/schedule-context**', async (route) => {
     const response = await route.fetch();
     const body = await response.json();
     body.slots = [bookedIso];
     await route.fulfill({ response, json: body });
   });
-  await page.goto(`/sessions/schedule?requestId=${ids[1]}`);
+  await page.goto(`/sessions/schedule?requestId=${requestId}`);
   await page.locator('[aria-label^="Choose a time"] button').first().click();
   await page.getByLabel('Chat').check();
   await page.getByRole('button', { name: /Confirm Support Session/ }).click();
   await expect(page.getByText('That time is no longer available, please pick a different time')).toBeVisible({ timeout: 60_000 });
   await evidence(page, 'TCUC3_8c');
   await page.unroute('**/api/sessions/schedule-context**');
+
+  // 8d: the manual form still books a session, and it is the only way to add a meeting link
+  await page.goto(`/sessions/schedule?requestId=${requestId}`);
+  await page.locator('[aria-label^="Choose a time"] button').first().click();
+  await page.getByLabel('Online').check();
+  await page.locator('#meetingLink').fill('https://meet.google.com/abc-defg-hij');
+  await page.getByRole('button', { name: /Confirm Support Session/ }).click();
+  await expect(page.getByText('Support Session scheduled')).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText(/\(Help Seeker\)/)).toBeVisible();
+  await expect(page.getByText(/\(Volunteer\)/)).toBeVisible();
+  await evidence(page, 'TCUC3_8d');
 });
 
 test('TCUC3_9 upcoming sessions appear on the student and volunteer dashboards, and volunteers can reach My Support Sessions', async () => {
