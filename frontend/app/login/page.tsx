@@ -201,7 +201,8 @@ export default function LoginPage() {
     } catch {
       // ignore storage errors
     }
-    router.push("/dashboard");
+    // Full page load so the dashboard reads the new session from storage
+  window.location.assign("/dashboard");
   }
 
   async function handleResend() {
@@ -272,11 +273,12 @@ export default function LoginPage() {
                 </Link>
               </form>
 
+              <div className={styles.divider}>or</div>
+                <button type="button" onClick={handleMicrosoft} className={styles.microsoftButton}>
+                  Sign in with Microsoft (HELP account)
+                </button>
+
               <p className={styles.switch}>
-                              <div className={styles.divider}>or</div>
-              <button type="button" onClick={handleMicrosoft} className={styles.microsoftButton}>
-                Sign in with Microsoft (HELP account)
-              </button>
                 New to CampusLink? <Link href="/register">Create an account</Link>
               </p>
             </>
