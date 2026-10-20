@@ -7,6 +7,7 @@ import { ASK_SUPPORT_DRAFT_KEY } from "@/lib/askSupportDraft";
 import { supabase } from "@/lib/supabaseClient";
 import { isOwnVolunteer, isSelfVolunteerConstraintError, withoutOwnVolunteer } from "@/lib/support-requests/volunteers";
 import styles from "./SubmitRequestForm.module.css";
+import { matchesVolunteerSkill, selectVolunteerRecommendations, } from "@/lib/support-requests/volunteer-matching";
 
 type AutoMatchVolunteer = {
   user_id: string;
@@ -176,7 +177,7 @@ export function SubmitRequestForm({ mode = "create", request }: { mode?: FormMod
     }
 
     const eligibleRows = withoutOwnVolunteer(volunteerRows ?? [], authData.user.id).filter((row) =>
-      !selectedCategory || (row.skills ?? []).includes(selectedCategory)
+      matchesVolunteerSkill(row.skills ?? [], selectedCategory)
     );
     if (eligibleRows.length === 0) {
       setMatching(false);
@@ -206,24 +207,28 @@ export function SubmitRequestForm({ mode = "create", request }: { mode?: FormMod
     });
 
     const profileByUser = new Map((profiles ?? []).map((profile) => [profile.user_id, profile]));
-    const matches = eligibleRows.flatMap((row) => {
-      const profile = profileByUser.get(row.user_id);
-      if (!profile) return [];
-      const availability = slotsByUser.get(row.user_id) ?? [];
-      const hasAvailabilityCriteria = Boolean(requestedDay || time);
-      const matchesAvailability = !hasAvailabilityCriteria || availability.some((slot) =>
-        (!requestedDay || slot.day === requestedDay) && isWithinSlot(time, slot.start, slot.end)
-      );
-      return matchesAvailability ? [{
-        user_id: row.user_id,
-        name: profile.name,
-        photo_url: profile.photo_url,
-        skills: row.skills ?? [],
-      }] : [];
-    }).slice(0, 3);
+    const candidates = eligibleRows.flatMap((row) => {
+    const profile = profileByUser.get(row.user_id);
+    if (!profile) return [];
 
-    setAutoMatches(matches);
-    setMatching(false);
+    return [{
+      user_id: row.user_id,
+      name: profile.name,
+      photo_url: profile.photo_url,
+      skills: row.skills ?? [],
+      availability: slotsByUser.get(row.user_id) ?? [],
+    }];
+  });
+
+  const matches = selectVolunteerRecommendations(
+    candidates,
+    authData.user.id,
+    requestedDay,
+    time,
+  );
+
+  setAutoMatches(matches);
+  setMatching(false);
   }
 
   function clearAutoMatches() {

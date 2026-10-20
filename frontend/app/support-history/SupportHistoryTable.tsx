@@ -4,19 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import RequestStatusBadge from "@/components/support-requests/RequestStatusBadge";
-import { supportHistoryQuery, type SupportRequestStatus } from "@/lib/support-requests/history";
 import styles from "./support-history.module.css";
-
-type HistoryRow = {
-  id: string;
-  title: string;
-  category: string;
-  requested_date: string;
-  volunteer_id: string | null;
-  volunteer_name: string | null;
-  status: SupportRequestStatus;
-  rating: number | null;
-};
+import { loadStudentSupportHistory, type StudentHistoryRow, } from "@/lib/support-requests/student-history";
 
 const FILTERS = ["All", "Completed", "Cancelled", "Declined"] as const;
 type StatusFilter = (typeof FILTERS)[number];
@@ -28,7 +17,7 @@ function formatDate(value: string) {
 
 export default function SupportHistoryTable() {
   const { profile } = useCurrentUser();
-  const [rows, setRows] = useState<HistoryRow[]>([]);
+  const [rows, setRows] = useState<StudentHistoryRow[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
   const [loading, setLoading] = useState(true);
@@ -42,42 +31,23 @@ export default function SupportHistoryTable() {
     async function loadHistory() {
       setLoading(true);
       setError("");
-      const query = supportHistoryQuery("student", profile!.user_id);
-      const { data, error: queryError } = await supabase
-        .from("support_request")
-        .select("request_id, title, category, requested_date, volunteer_id, status")
-        .eq(query.ownerColumn, query.ownerId)
-        .in("status", [...query.statuses])
-        .order("requested_date", { ascending: false });
+      const result = await loadStudentSupportHistory(supabase, profile!.user_id);
 
       if (cancelled) return;
-      if (queryError) {
+
+      if (result.error === "history") {
         setError("We couldn't load your support history. Please try again later.");
         setLoading(false);
         return;
       }
 
-      const history = data ?? [];
-      const volunteerIds = [...new Set(history.map((row) => row.volunteer_id).filter((id): id is string => Boolean(id)))];
-      const { data: volunteers, error: volunteerError } = volunteerIds.length
-        ? await supabase.from("users").select("user_id, name").in("user_id", volunteerIds)
-        : { data: [], error: null };
-
-      if (cancelled) return;
-      if (volunteerError) {
+      if (result.error === "volunteers") {
         setError("We couldn't load volunteer names for your history.");
         setLoading(false);
         return;
       }
 
-      const names = new Map((volunteers ?? []).map((volunteer) => [volunteer.user_id, volunteer.name]));
-      setRows(history.map((row) => ({
-        ...row,
-        id: row.request_id,
-        status: row.status as SupportRequestStatus,
-        rating: null, // ratings now live in the feedback table, not on support_request
-        volunteer_name: row.volunteer_id ? names.get(row.volunteer_id) ?? null : null,
-      })));
+      setRows(result.rows);
       setLoading(false);
     }
 
@@ -95,7 +65,7 @@ export default function SupportHistoryTable() {
     });
   }, [rows, search, statusFilter]);
 
-  async function saveRating(row: HistoryRow, rating: number) {
+  async function saveRating(row: StudentHistoryRow, rating: number) {
     if (!profile || savingRatingId) return;
     setSavingRatingId(row.id);
     setError("");

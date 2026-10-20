@@ -62,4 +62,42 @@ describe("POST /api/support-requests", () => {
     expect(response.status).toBe(400);
     expect((await response.json()).message).toBe("You cannot select yourself as a volunteer.");
   });
+
+  it("TCUC2_4 rejects support request submission when the student is not signed in", async () => {
+    authenticate.mockResolvedValueOnce(null);
+
+    const response = await post(BODY);
+
+    expect(response.status).toBe(401);
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it("TCUC2_6 ignores client-supplied requester ID and initial status", async () => {
+    const response = await post({
+      ...BODY,
+      requester_id: OTHER,
+      status: "Accepted",
+    });
+
+    expect(response.status).toBe(201);
+    expect(insert).toHaveBeenCalledWith({
+      ...BODY,
+      requester_id: ME,
+      status: "Pending",
+    });
+  });
+
+  it("TCUC2_7 returns a safe error when the database insert fails", async () => {
+    insert.mockResolvedValue({
+      error: { code: "XX000", message: "database unavailable" },
+    });
+
+    const response = await post(BODY);
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toMatchObject({
+      error: "unknown",
+      message: "We could not submit your support request",
+    });
+  });
 });
