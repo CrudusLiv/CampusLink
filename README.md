@@ -125,6 +125,10 @@ npx supabase db push
 
 If someone applied a migration by pasting it into the SQL editor, Supabase will not know about it and `db push` will try to run it again. Fix that with `npx supabase migration repair --status applied <version>` after confirming the change really exists.
 
+### Demo data
+
+`backend/supabase/seed-demo.sql` fills the site with fake people, requests, sessions and ratings around `b2300682@helplive.edu.my` (3 volunteers, 2 students, incoming requests to accept, upcoming and past sessions). Dates are relative to the day you run it. Run it with `npx supabase db query --linked -f supabase/seed-demo.sql` from `backend/`. The cleanup statements are at the bottom of the file. The fake accounts have no inbox, so nobody can log in as them.
+
 ### Test data for sessions
 
 `backend/supabase/seed-sessions.sql` creates three support requests (two accepted, one pending) between two accounts you have already registered. Edit the two emails at the top, make the volunteer set their availability in the app first, then run it in the Supabase SQL editor. Cleanup statements are at the bottom of the file.
