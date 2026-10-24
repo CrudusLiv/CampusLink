@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticate, fail, unauthorized } from '@/lib/sessions/api';
-import { completeSession, createSession, listSessions } from '@/lib/sessions/data';
+import { cancelSession, completeSession, createSession, listSessions } from '@/lib/sessions/data';
 import { completeSessionSchema, fieldErrors, listQuerySchema, scheduleSchema } from '@/lib/sessions/schemas';
 import { getAcceptedRequest } from '@/lib/sessions/wrappers';
 
@@ -14,6 +14,8 @@ export async function GET(req: Request) {
   const query = listQuerySchema.safeParse({
     status: params.get('status') ?? undefined,
     upcoming: params.get('upcoming') ?? undefined,
+    history: params.get('history') ?? undefined,
+    id: params.get('id') ?? undefined,
   });
   if (!query.success) return fail(400, 'validation', 'Invalid filter', fieldErrors(query.error));
 
@@ -53,7 +55,8 @@ export async function PATCH(req: Request) {
   if (!input.success) return fail(400, 'validation', 'Please provide a valid session', fieldErrors(input.error));
 
   try {
-    const result = await completeSession(auth.db, input.data.sessionId);
+    const run = input.data.action === 'cancel' ? cancelSession : completeSession;
+    const result = await run(auth.db, input.data.sessionId);
     if (!result.ok) return fail(result.error.status, result.error.error, result.error.message);
     return NextResponse.json({ success: true });
   } catch (e) {

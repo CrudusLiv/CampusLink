@@ -3,32 +3,6 @@ import { supabase } from '@/lib/supabaseClient';
 import type { ScheduleInput } from './schemas';
 import type { AwaitingRequest, ScheduleContext, SessionView } from './types';
 
-// ---- Browser-only edits made by the session detail page (reschedule / cancel / complete / rating). ----
-// These are NOT saved to the database yet (Iteration 2 replaces them with real PATCH calls + the feedback table).
-const SESSION_UPDATES_KEY = 'campuslink.session.updates.v1';
-
-type SessionUpdate = Partial<Pick<SessionView, 'scheduledDatetime' | 'status' | 'rating' | 'feedback' | 'rescheduleNote'>>;
-
-function readSessionUpdates(): Record<string, SessionUpdate> {
-  if (typeof window === 'undefined') return {};
-  try {
-    return JSON.parse(window.localStorage.getItem(SESSION_UPDATES_KEY) ?? '{}') as Record<string, SessionUpdate>;
-  } catch {
-    return {};
-  }
-}
-
-export function updateMockSession(id: string, update: SessionUpdate) {
-  try {
-    const updates = readSessionUpdates();
-    updates[id] = { ...updates[id], ...update };
-    window.localStorage.setItem(SESSION_UPDATES_KEY, JSON.stringify(updates));
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 // ---- API calls ----
 async function api(path: string, init: { method?: string; body?: unknown } = {}) {
   const { data } = await supabase.auth.getSession();
@@ -49,13 +23,20 @@ export async function fetchUpcoming(preview?: PreviewState): Promise<SessionView
   if (preview === 'empty') return [];
   const { status, body } = await api('/api/sessions?status=Scheduled&upcoming=true');
   if (status !== 200 || !body) throw new Error(`Could not load sessions (${status})`);
-  const updates = readSessionUpdates();
-  return (body.sessions as SessionView[]).map((session) => ({ ...session, ...updates[session.id] }));
+  return body.sessions as SessionView[];
+}
+
+/** Completed + Cancelled sessions, newest first. */
+export async function fetchHistory(): Promise<SessionView[]> {
+  const { status, body } = await api('/api/sessions?history=true');
+  if (status !== 200 || !body) throw new Error(`Could not load session history (${status})`);
+  return body.sessions as SessionView[];
 }
 
 export async function fetchSession(id: string): Promise<SessionView | null> {
-  const sessions = await fetchUpcoming();
-  return sessions.find((session) => session.id === id) ?? null;
+  const { status, body } = await api(`/api/sessions?id=${encodeURIComponent(id)}`);
+  if (status !== 200 || !body) throw new Error(`Could not load the session (${status})`);
+  return (body.sessions as SessionView[])[0] ?? null;
 }
 
 /** Accepted requests that still need a session time. */
@@ -85,11 +66,16 @@ export async function scheduleSession(input: ScheduleInput): Promise<ScheduleRes
   };
 }
 
-export type CompletionResult = { ok: true } | { ok: false; message: string };
+export type ActionResult = { ok: true } | { ok: false; message: string };
 
-/** Persist completion through the authenticated API and database transaction. */
-export async function persistSessionCompletion(sessionId: string): Promise<CompletionResult> {
-  const { status, body } = await api('/api/sessions', { method: 'PATCH', body: { sessionId } });
-  if (status === 200) return { ok: true };
-  return { ok: false, message: String(body?.message ?? 'Something went wrong. Please try again.') };
-}
+const toResult = ({ status, body }: Awaited<ReturnType<typeof api>>): ActionResult =>
+  status === 200 || status === 201 ? { ok: true } : { ok: false, message: String(body?.message ?? 'Something went wrong. Please try again.') };
+
+/** Volunteer marks a session completed (database transaction, checked server side). */
+export const completeSession = (sessionId: string) => api('/api/sessions', { method: 'PATCH', body: { sessionId, action: 'complete' } }).then(toResult);
+
+export const cancelSession = (sessionId: string) => api('/api/sessions', { method: 'PATCH', body: { sessionId, action: 'cancel' } }).then(toResult);
+
+/** Help Seeker's feedback: one per session, read-only afterwards. */
+export const sendFeedback = (sessionId: string, rating: number, comment: string) =>
+  api('/api/sessions/feedback', { method: 'POST', body: { sessionId, rating, comment: comment.trim() || undefined } }).then(toResult);

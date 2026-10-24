@@ -16,13 +16,27 @@ export const scheduleSchema = z.object({
 
 export type ScheduleInput = z.infer<typeof scheduleSchema>;
 
-/** PATCH /api/sessions: persist completion for an existing session. */
-export const completeSessionSchema = z.object({ sessionId: z.uuid('Missing or invalid session') });
+/** PATCH /api/sessions: complete (default) or cancel an existing session. */
+export const completeSessionSchema = z.object({
+  sessionId: z.uuid('Missing or invalid session'),
+  action: z.enum(['complete', 'cancel']).default('complete'),
+});
 
-/** GET /api/sessions?status=Scheduled&upcoming=true */
+/** POST /api/sessions/feedback: stars are mandatory, the comment is optional. */
+export const feedbackSchema = z.object({
+  sessionId: z.uuid('Missing or invalid session'),
+  rating: z.number().int('Choose a star rating').min(1, 'Choose a star rating').max(5, 'Choose a star rating'),
+  comment: z.string().trim().max(1000, 'Keep the comment under 1000 characters').optional(),
+});
+
+export type FeedbackInput = z.infer<typeof feedbackSchema>;
+
+/** GET /api/sessions?status=Scheduled&upcoming=true, ?history=true (Completed + Cancelled, newest first) or ?id= */
 export const listQuerySchema = z.object({
   status: z.enum(['Scheduled', 'Completed', 'Cancelled']).optional(),
   upcoming: z.enum(['true', 'false']).optional().transform((v) => v === 'true'),
+  history: z.enum(['true', 'false']).optional().transform((v) => v === 'true'),
+  id: z.uuid().optional(),
 });
 
 /** First message per field, ready to show next to the inputs. */
