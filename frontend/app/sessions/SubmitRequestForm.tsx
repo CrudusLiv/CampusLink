@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { SUBJECTS } from "@/lib/categories";
 import { ASK_SUPPORT_DRAFT_KEY } from "@/lib/askSupportDraft";
+import { klDateKey, TZ } from "@/lib/sessions/time";
 import { supabase } from "@/lib/supabaseClient";
 import { isOwnVolunteer, isSelfVolunteerConstraintError, withoutOwnVolunteer } from "@/lib/support-requests/volunteers";
 import styles from "./SubmitRequestForm.module.css";
@@ -29,11 +30,89 @@ export type ExistingSupportRequest = {
 };
 
 type FormMode = "create" | "view" | "edit";
+type FormInitialValues = {
+  selectedCategory: string;
+  title: string;
+  description: string;
+  date: string;
+  time: string;
+  supportMode: string;
+  volunteerChoice: "none" | "choose" | "auto";
+  chosenVolunteer: { id: string; name: string; category: string; photoUrl: string | null } | null;
+};
+
+const EMPTY_FORM_VALUES: FormInitialValues = {
+  selectedCategory: "", title: "", description: "", date: "", time: "", supportMode: "",
+  volunteerChoice: "none", chosenVolunteer: null,
+};
+
+function createInitialValuesSnapshot() {
+  if (typeof window === "undefined") return "";
+  let initial: FormInitialValues = { ...EMPTY_FORM_VALUES };
+  try {
+    const saved = sessionStorage.getItem(ASK_SUPPORT_DRAFT_KEY);
+    if (saved) initial = { ...initial, ...JSON.parse(saved) as Partial<FormInitialValues> };
+  } catch {
+    try { sessionStorage.removeItem(ASK_SUPPORT_DRAFT_KEY); } catch { /* Storage may be unavailable. */ }
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const category = params.get("category");
+  if (category && SUBJECTS.includes(category as (typeof SUBJECTS)[number])) initial.selectedCategory = category;
+  if (params.get("date")) initial.date = params.get("date")!;
+  if (params.get("time")) initial.time = params.get("time")!;
+  if (params.get("mode")) initial.supportMode = params.get("mode")!;
+  const volunteerId = params.get("volunteerId");
+  const volunteerName = params.get("volunteerName");
+  if (volunteerId && volunteerName) {
+    initial.chosenVolunteer = {
+      id: volunteerId,
+      name: volunteerName,
+      category: category ?? "",
+      photoUrl: params.get("volunteerPhoto"),
+    };
+    initial.volunteerChoice = "choose";
+  }
+  return JSON.stringify(initial);
+}
+
+const getServerInitializationSnapshot = () => "";
+
+function valuesFromRequest(request?: ExistingSupportRequest): FormInitialValues {
+  if (!request) return EMPTY_FORM_VALUES;
+  return {
+    selectedCategory: request.category,
+    title: request.title,
+    description: request.description,
+    date: request.requested_date,
+    time: request.requested_time.slice(0, 5),
+    supportMode: request.support_mode ?? "",
+    volunteerChoice: request.volunteer_id ? "choose" : "none",
+    chosenVolunteer: request.volunteer_id ? {
+      id: request.volunteer_id,
+      name: request.volunteer_name ?? "Selected volunteer",
+      category: request.category,
+      photoUrl: null,
+    } : null,
+  };
+}
 
 function weekdayFromDate(value: string) {
   if (!value) return "";
-  const date = new Date(`${value}T12:00:00`);
-  return Number.isNaN(date.getTime()) ? "" : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getDay()];
+  const date = new Date(`${value}T12:00:00+08:00`);
+  return Number.isNaN(date.getTime()) ? "" : new Intl.DateTimeFormat("en-US", { timeZone: TZ, weekday: "short" }).format(date);
+}
+
+function formatSelectedDate(value: string) {
+  if (!value) return "";
+  const parsed = new Date(`${value}T12:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return "";
+  const weekday = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "long" }).format(parsed);
+  return `${parsed.getUTCMonth() + 1}/${parsed.getUTCDate()}/${parsed.getUTCFullYear()}, ${weekday}`;
+}
+
+function localDateValue(date: Date) {
+  return klDateKey(date.toISOString());
 }
 
 function isWithinSlot(time: string, start: string, end: string) {
@@ -42,95 +121,74 @@ function isWithinSlot(time: string, start: string, end: string) {
   return start.slice(0, 5) <= selected && selected < end.slice(0, 5);
 }
 
-export function SubmitRequestForm({ mode = "create", request }: { mode?: FormMode; request?: ExistingSupportRequest }) {
+export function SubmitRequestForm(props: { mode?: FormMode; request?: ExistingSupportRequest }) {
+  const mode = props.mode ?? "create";
+  const snapshotRef = useRef<string | null>(null);
+  const getSnapshot = useCallback(() => {
+    if (snapshotRef.current === null) snapshotRef.current = createInitialValuesSnapshot();
+    return snapshotRef.current;
+  }, []);
+  const subscribe = useCallback((onChange: () => void) => {
+    const handlePopState = () => {
+      snapshotRef.current = null;
+      onChange();
+    };
+    if (typeof window === "undefined") return () => {};
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getServerInitializationSnapshot);
+  let initialValues = valuesFromRequest(props.request);
+  if (mode === "create" && snapshot) {
+    try { initialValues = JSON.parse(snapshot) as FormInitialValues; } catch { initialValues = EMPTY_FORM_VALUES; }
+  }
+  const key = mode === "create" ? `create:${snapshot}` : `${mode}:${JSON.stringify(props.request ?? null)}`;
+  return <SubmitRequestFormContent key={key} {...props} mode={mode} initialValues={initialValues} initialReady={mode !== "create" || Boolean(snapshot)} />;
+}
+
+function SubmitRequestFormContent({ mode = "create", request, initialValues, initialReady }: {
+  mode?: FormMode;
+  request?: ExistingSupportRequest;
+  initialValues: FormInitialValues;
+  initialReady: boolean;
+}) {
   const router = useRouter();
   const readOnly = mode === "view";
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [title, setTitle] = useState<string>("");
-  const [description, setDescription] = useState<string>("");
-  const [date, setDate] = useState<string>("");
-  const [time, setTime] = useState<string>("");
-  const [supportMode, setSupportMode] = useState<string>("");
-  const [volunteerChoice, setVolunteerChoice] = useState<"none" | "choose" | "auto">("none");
-  const [chosenVolunteer, setChosenVolunteer] = useState<{ id: string; name: string; category: string; photoUrl: string | null } | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>(initialValues.selectedCategory);
+  const [title, setTitle] = useState<string>(initialValues.title);
+  const [description, setDescription] = useState<string>(initialValues.description);
+  const [date, setDate] = useState<string>(initialValues.date);
+  const [time, setTime] = useState<string>(initialValues.time);
+  const [supportMode, setSupportMode] = useState<string>(initialValues.supportMode);
+  const [volunteerChoice, setVolunteerChoice] = useState<"none" | "choose" | "auto">(initialValues.volunteerChoice);
+  const [chosenVolunteer, setChosenVolunteer] = useState(initialValues.chosenVolunteer);
   const [autoMatches, setAutoMatches] = useState<AutoMatchVolunteer[]>([]);
   const [matching, setMatching] = useState(false);
   const [matchError, setMatchError] = useState("");
   const [hasMatched, setHasMatched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
-  const didHydrate = useRef(false);
+  const [validationError, setValidationError] = useState<{ field: string; message: string } | null>(null);
   const matchRequestId = useRef(0);
+  const isSubmitting = useRef(false);
 
-  const MODES = ["Online", "In-person", "Text only"];
+  const MODES = ["Online", "In-person"];
 
-  useEffect(() => {
-    if (mode !== "create") {
-      if (request) {
-        setSelectedCategory(request.category);
-        setTitle(request.title);
-        setDescription(request.description);
-        setDate(request.requested_date);
-        setTime(request.requested_time.slice(0, 5));
-        setSupportMode(request.support_mode ?? "");
-        if (request.volunteer_id) {
-          setChosenVolunteer({ id: request.volunteer_id, name: request.volunteer_name ?? "Selected volunteer", category: request.category, photoUrl: null });
-          setVolunteerChoice("choose");
-        }
-      }
-      didHydrate.current = true;
-      return;
-    }
-    try {
-      const saved = sessionStorage.getItem(ASK_SUPPORT_DRAFT_KEY);
-      if (saved) {
-        const draft = JSON.parse(saved) as {
-          selectedCategory?: string; title?: string; description?: string; date?: string; time?: string;
-          supportMode?: string; volunteerChoice?: "none" | "choose" | "auto";
-          chosenVolunteer?: { id: string; name: string; category: string; photoUrl?: string | null } | null;
-        };
-        if (draft.selectedCategory) setSelectedCategory(draft.selectedCategory);
-        if (draft.title) setTitle(draft.title);
-        if (draft.description) setDescription(draft.description);
-        if (draft.date) setDate(draft.date);
-        if (draft.time) setTime(draft.time);
-        if (draft.supportMode) setSupportMode(draft.supportMode);
-        if (draft.volunteerChoice) setVolunteerChoice(draft.volunteerChoice);
-        if (draft.chosenVolunteer) {
-          setChosenVolunteer({ ...draft.chosenVolunteer, photoUrl: draft.chosenVolunteer.photoUrl ?? null });
-        }
-      }
-    } catch {
-      try { sessionStorage.removeItem(ASK_SUPPORT_DRAFT_KEY); } catch { /* Storage can be unavailable in private browsing. */ }
-    }
-
-    const params = new URLSearchParams(window.location.search);
-    const volunteerId = params.get("volunteerId");
-    const volunteerName = params.get("volunteerName");
-    const category = params.get("category");
-    const volunteerPhoto = params.get("volunteerPhoto");
-
-    if (category && SUBJECTS.includes(category as (typeof SUBJECTS)[number])) setSelectedCategory(category);
-    if (params.get("date")) setDate(params.get("date")!);
-    if (params.get("time")) setTime(params.get("time")!);
-    if (params.get("mode")) setSupportMode(params.get("mode")!);
-    if (volunteerId && volunteerName) {
-      setChosenVolunteer({ id: volunteerId, name: volunteerName, category: category ?? "", photoUrl: volunteerPhoto });
-      setVolunteerChoice("choose");
-    }
-    didHydrate.current = true;
-  }, [mode, request]);
+  function clearValidationError() {
+    setValidationError(null);
+  }
 
   useEffect(() => {
-    if (!didHydrate.current || mode !== "create") return;
+    if (!initialReady || mode !== "create") return;
     try {
       sessionStorage.setItem(ASK_SUPPORT_DRAFT_KEY, JSON.stringify({
         selectedCategory, title, description, date, time, supportMode, volunteerChoice, chosenVolunteer,
       }));
     } catch { /* Keep the form usable when browser storage is unavailable. */ }
-  }, [mode, selectedCategory, title, description, date, time, supportMode, volunteerChoice, chosenVolunteer]);
+  }, [initialReady, mode, selectedCategory, title, description, date, time, supportMode, volunteerChoice, chosenVolunteer]);
 
   function chooseVolunteer() {
+    clearValidationError();
     setVolunteerChoice("choose");
     try {
       sessionStorage.setItem(ASK_SUPPORT_DRAFT_KEY, JSON.stringify({
@@ -148,6 +206,7 @@ export function SubmitRequestForm({ mode = "create", request }: { mode?: FormMod
 
   async function findMatches() {
     const requestId = ++matchRequestId.current;
+    clearValidationError();
     setVolunteerChoice("auto");
     setChosenVolunteer(null);
     setAutoMatches([]);
@@ -245,33 +304,91 @@ export function SubmitRequestForm({ mode = "create", request }: { mode?: FormMod
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (isSubmitting.current) return;
     setSubmitError("");
     if (mode === "view") return;
-    if (!selectedCategory) {
-      setSubmitError("Choose a category for your request.");
+    const requiredFields: { field: string; value: string; message: string }[] = [
+      { field: "category", value: selectedCategory, message: "Please select a category." },
+      { field: "title", value: title.trim(), message: "Please fill out this field." },
+      { field: "description", value: description.trim(), message: "Please fill out this field." },
+      { field: "date", value: date, message: "Please select a date." },
+      { field: "time", value: time, message: "Please select a time." },
+      { field: "supportMode", value: supportMode, message: "Please select a support mode." },
+      ...(mode === "create" ? [{ field: "volunteer", value: chosenVolunteer?.id ?? "", message: "Please select a volunteer." }] : []),
+    ];
+    const missing = requiredFields.find((field) => !field.value);
+    if (missing) {
+      setValidationError(missing);
       return;
     }
-    if (!supportMode) {
-      setSubmitError("Choose a support mode for your request.");
-      return;
-    }
-    if (mode === "create" && !chosenVolunteer) {
-      setSubmitError("Choose a volunteer or select one from Auto-Match before submitting.");
-      return;
-    }
-
+    setValidationError(null);
+    isSubmitting.current = true;
     setLoading(true);
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    if (authError || !authData.user) {
+    const failValidation = (field: string, message: string) => {
+      setValidationError({ field, message });
+      setLoading(false);
+      isSubmitting.current = false;
+    };
+    if (mode === "create" && volunteerChoice === "choose" && chosenVolunteer) {
+      let volunteerProfile;
+      let volunteerSlots;
+      let profileError;
+      let availabilityError;
+      try {
+        [{ data: volunteerProfile, error: profileError }, { data: volunteerSlots, error: availabilityError }] = await Promise.all([
+          supabase.from("volunteer_profile").select("skills").eq("user_id", chosenVolunteer.id).eq("is_volunteer", true).maybeSingle(),
+          supabase.from("availability").select("day_of_week, start_time, end_time").eq("user_id", chosenVolunteer.id),
+        ]);
+      } catch {
+        failValidation("volunteer", "We couldn't verify this volunteer's profile and availability. Please try again.");
+        return;
+      }
+      if (profileError || availabilityError || !volunteerProfile) {
+        failValidation("volunteer", "We couldn't verify this volunteer's profile and availability. Please try again.");
+        return;
+      }
+      if (!(volunteerProfile.skills ?? []).includes(selectedCategory)) {
+        failValidation("category", "The selected category does not match this volunteer's skills.");
+        return;
+      }
+      if (date < localDateValue(new Date())) {
+        failValidation("date", "Please select today or a future date.");
+        return;
+      }
+      const day = weekdayFromDate(date);
+      const daySlots = (volunteerSlots ?? []).filter((slot) => slot.day_of_week === day);
+      if (daySlots.length === 0) {
+        failValidation("date", "This volunteer is not available on the selected date.");
+        return;
+      }
+      if (!daySlots.some((slot) => isWithinSlot(time, slot.start_time, slot.end_time))) {
+        failValidation("time", "This volunteer is not available at the selected time.");
+        return;
+      }
+    }
+    if (date < localDateValue(new Date())) {
+      failValidation("date", "Please select today or a future date.");
+      return;
+    }
+    const selectedDateTime = new Date(`${date}T${time}:00+08:00`);
+    if (!date || !time || Number.isNaN(selectedDateTime.getTime()) || selectedDateTime.getTime() < Date.now() + 60 * 60 * 1000) {
+      failValidation("time", "Please choose a time at least 1 hour from now.");
+      return;
+    }
+    const authResult = await supabase.auth.getUser().catch(() => null);
+    if (!authResult || authResult.error || !authResult.data.user) {
       setSubmitError("Please log in again before submitting your request.");
       setLoading(false);
+      isSubmitting.current = false;
       return;
     }
+    const authData = authResult.data;
 
     const volunteerId = chosenVolunteer?.id ?? request?.volunteer_id ?? null;
     if (isOwnVolunteer(volunteerId, authData.user.id)) {
       setSubmitError("You cannot select yourself as a volunteer.");
       setLoading(false);
+      isSubmitting.current = false;
       return;
     }
 
@@ -283,7 +400,7 @@ export function SubmitRequestForm({ mode = "create", request }: { mode?: FormMod
       requested_time: time,
       support_mode: supportMode,
       volunteer_id: volunteerId,
-      preferred_time: new Date(`${date}T${time}`).toISOString(),
+      preferred_time: new Date(`${date}T${time}:00+08:00`).toISOString(),
     };
     const result = mode === "edit" && request
       ? await supabase.from("support_request").update(requestValues)
@@ -293,20 +410,25 @@ export function SubmitRequestForm({ mode = "create", request }: { mode?: FormMod
         .select("request_id")
         .maybeSingle()
       : await (async () => {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const response = await fetch("/api/support-requests", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(sessionData.session?.access_token ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
-          },
-          body: JSON.stringify(requestValues),
-        });
-        const payload = await response.json().catch(() => ({}));
-        return { data: null, error: response.ok ? null : { code: response.status === 400 && payload.fields?.volunteer_id === "You cannot select yourself as a volunteer." ? "SELF_VOLUNTEER" : "API_ERROR", message: payload.message ?? "Request submission failed.", details: "" } };
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const response = await fetch("/api/support-requests", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(sessionData.session?.access_token ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
+            },
+            body: JSON.stringify(requestValues),
+          });
+          const payload = await response.json().catch(() => ({}));
+          return { data: null, error: response.ok ? null : { code: response.status === 400 && payload.fields?.volunteer_id === "You cannot select yourself as a volunteer." ? "SELF_VOLUNTEER" : "API_ERROR", message: payload.message ?? "Request submission failed.", details: "" } };
+        } catch {
+          return { data: null, error: { code: "NETWORK_ERROR", message: "Network error. Please check your connection and try again.", details: "" } };
+        }
       })();
     const error = result.error;
     setLoading(false);
+    isSubmitting.current = false;
     if (error) {
       console.error("Support request save failed:", { code: error.code, message: error.message, details: error.details });
       if (error.code === "SELF_VOLUNTEER" || isSelfVolunteerConstraintError(error)) {
@@ -330,6 +452,8 @@ export function SubmitRequestForm({ mode = "create", request }: { mode?: FormMod
 
     if (mode === "create") {
       try { sessionStorage.removeItem(ASK_SUPPORT_DRAFT_KEY); } catch { /* Ignore unavailable browser storage. */ }
+      router.push("/support-requests?submitted=1");
+      return;
     }
     router.push("/support-requests");
   }
@@ -338,10 +462,11 @@ export function SubmitRequestForm({ mode = "create", request }: { mode?: FormMod
     <div className={styles.contentLayout}>
       
       <section className={styles.formSection}>
-        <form onSubmit={handleSubmit} className={styles.form}>
+        <form onSubmit={handleSubmit} className={styles.form} noValidate>
           
           <div className={styles.fieldGroup}>
             <label className={styles.label}>Category</label>
+            {validationError?.field === "category" && <p className={styles.validationTooltip} role="alert">{validationError.message}</p>}
             <div className={styles.tagContainer}>
               {mode === "view" ? (
                 <span className={`${styles.tag} ${styles.tagSelected} ${styles.tagView}`}>{selectedCategory}</span>
@@ -349,8 +474,8 @@ export function SubmitRequestForm({ mode = "create", request }: { mode?: FormMod
                 <button
                   key={subject}
                   type="button"
-                  disabled={readOnly}
-                  onClick={() => { clearAutoMatches(); setSelectedCategory(subject); }}
+                  disabled={readOnly || loading}
+                  onClick={() => { clearAutoMatches(); setSelectedCategory(subject); clearValidationError(); }}
                   className={selectedCategory === subject ? `${styles.tag} ${styles.tagSelected}` : styles.tag}
                 >
                   {subject}
@@ -365,10 +490,10 @@ export function SubmitRequestForm({ mode = "create", request }: { mode?: FormMod
               placeholder="Request Title" 
               className={styles.input}
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              disabled={readOnly}
-              required 
+              onChange={(e) => { setTitle(e.target.value); clearValidationError(); }}
+              disabled={readOnly || loading}
             />
+            {validationError?.field === "title" && <p className={styles.validationTooltip} role="alert">{validationError.message}</p>}
           </div>
 
           <div className={styles.fieldGroup}>
@@ -377,40 +502,49 @@ export function SubmitRequestForm({ mode = "create", request }: { mode?: FormMod
               className={styles.textarea} 
               rows={6}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              disabled={readOnly}
-              required
+              onChange={(e) => { setDescription(e.target.value); clearValidationError(); }}
+              disabled={readOnly || loading}
             />
+            {validationError?.field === "description" && <p className={styles.validationTooltip} role="alert">{validationError.message}</p>}
           </div>
 
           <div className={styles.rowGrid}>
-            <input 
+            <div className={styles.fieldGroup}>
+            <div className={styles.dateInputWrap}>
+            <input
               type="date" 
-              className={styles.input} 
+              className={`${styles.input} ${date ? styles.dateInputWithLabel : ""}`}
               value={date}
-              onChange={(e) => { clearAutoMatches(); setDate(e.target.value); }}
-              disabled={readOnly}
-              required
+              min={localDateValue(new Date())}
+              onChange={(e) => { clearAutoMatches(); setDate(e.target.value); clearValidationError(); }}
+              disabled={readOnly || loading}
             />
-            <input 
-              type="time" 
-              className={styles.input} 
-              value={time}
-              onChange={(e) => { clearAutoMatches(); setTime(e.target.value); }}
-              disabled={readOnly}
-              required
-            />
+            {date && <span className={styles.dateDisplay} aria-hidden="true">{formatSelectedDate(date)}</span>}
+            </div>
+            {validationError?.field === "date" && <p className={styles.validationTooltip} role="alert">{validationError.message}</p>}
+            </div>
+            <div className={styles.fieldGroup}>
+              <input
+                type="time"
+                className={styles.input}
+                value={time}
+                onChange={(e) => { clearAutoMatches(); setTime(e.target.value); clearValidationError(); }}
+                disabled={readOnly || loading}
+              />
+              {validationError?.field === "time" && <p className={styles.validationTooltip} role="alert">{validationError.message}</p>}
+            </div>
           </div>
 
           <div className={styles.fieldGroup}>
             <label className={styles.label}>Support mode</label>
+            {validationError?.field === "supportMode" && <p className={styles.validationTooltip} role="alert">{validationError.message}</p>}
             <div className={styles.tagContainer}>
               {MODES.map((mode) => (
                 <button
                   key={mode}
                   type="button"
-                  disabled={readOnly}
-                  onClick={() => { clearAutoMatches(); setSupportMode(mode); }}
+                  disabled={readOnly || loading}
+                  onClick={() => { clearAutoMatches(); setSupportMode(mode); clearValidationError(); }}
                   className={supportMode === mode ? `${styles.tag} ${styles.tagSelected}` : styles.tag}
                 >
                   {mode}
@@ -432,16 +566,18 @@ export function SubmitRequestForm({ mode = "create", request }: { mode?: FormMod
 
       <aside className={styles.volunteerSection}>
         {mode === "create" && <>
+          <h2 className={styles.sectionHeading}>Volunteer</h2>
+          {validationError?.field === "volunteer" && <p className={styles.validationTooltip} role="alert">{validationError.message}</p>}
           <p className={styles.sectionDesc}>Choose a volunteer yourself or let CampusLink match you with one.</p>
           <div className={styles.toggleButtons}>
-            <button type="button" className={`${styles.toggleBtn} ${volunteerChoice === "choose" ? styles.toggleBtnActive : ""}`} onClick={chooseVolunteer}>Choose Volunteer</button>
-            <button type="button" className={`${styles.toggleBtn} ${volunteerChoice === "auto" ? styles.toggleBtnActive : ""}`} onClick={findMatches} disabled={matching}>Auto-Match</button>
+            <button type="button" className={`${styles.toggleBtn} ${volunteerChoice === "choose" ? styles.toggleBtnActive : ""}`} onClick={chooseVolunteer} disabled={loading}>Choose Volunteer</button>
+            <button type="button" className={`${styles.toggleBtn} ${volunteerChoice === "auto" ? styles.toggleBtnActive : ""}`} onClick={findMatches} disabled={matching || loading}>Auto-Match</button>
           </div>
         </>}
         {volunteerChoice === "auto" && hasMatched && <div className={styles.autoMatchResults} aria-live="polite">
           {matching ? <p className={styles.matchMessage}>Finding matching volunteers…</p> : matchError ? <p className={styles.matchError} role="alert">{matchError}</p> : autoMatches.length === 0 ? <p className={styles.matchMessage}>No volunteers match your selected category and availability.</p> : (
             <>
-              <p className={styles.matchHeading}>Matching volunteers (up to 3)</p>
+              <p className={styles.matchHeading}>Matching volunteers</p>
               {autoMatches.map((volunteer) => {
                 const category = selectedCategory || volunteer.skills[0] || "";
                 const selected = chosenVolunteer?.id === volunteer.user_id;
@@ -457,7 +593,8 @@ export function SubmitRequestForm({ mode = "create", request }: { mode?: FormMod
                   <button
                     type="button"
                     className={selected ? styles.matchSelected : styles.matchSelect}
-                    onClick={() => setChosenVolunteer({ id: volunteer.user_id, name: volunteer.name, category, photoUrl: volunteer.photo_url })}
+                    disabled={loading}
+                    onClick={() => { setChosenVolunteer({ id: volunteer.user_id, name: volunteer.name, category, photoUrl: volunteer.photo_url }); clearValidationError(); }}
                   >{selected ? "Selected" : "Select"}</button>
                 </div>;
               })}

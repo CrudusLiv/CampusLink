@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import RequestStatusBadge from "@/components/support-requests/RequestStatusBadge";
@@ -31,11 +32,8 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(new Date(value));
 }
 
-function formatTime(value: string) {
-  return value.slice(0, 5);
-}
-
-export default function SupportRequestsTable() {
+export default function SupportRequestsTable({ showSubmittedToast = false }: { showSubmittedToast?: boolean }) {
+  const router = useRouter();
   const { profile } = useCurrentUser();
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [filter, setFilter] = useState<Filter>("All");
@@ -46,6 +44,12 @@ export default function SupportRequestsTable() {
   const [loading, setLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!showSubmittedToast) return;
+    const timer = setTimeout(() => router.replace("/support-requests", { scroll: false }), 2000);
+    return () => clearTimeout(timer);
+  }, [router, showSubmittedToast]);
 
   useEffect(() => {
     if (!profile) return;
@@ -186,10 +190,14 @@ export default function SupportRequestsTable() {
     return true;
   }
 
-  if (!profile) return <main className={styles.content}><p className={styles.message}>Loading requests…</p></main>;
+  if (!profile) return <main className={styles.content}>
+    {showSubmittedToast && <div className={styles.successToast} role="status" aria-live="polite"><span className={styles.successToastCheck} aria-hidden="true">✓</span><span>Your support request was submitted successfully.</span></div>}
+    <p className={styles.message}>Loading requests…</p>
+  </main>;
 
   return (
     <main className={styles.content}>
+      {showSubmittedToast && <div className={styles.successToast} role="status" aria-live="polite"><span className={styles.successToastCheck} aria-hidden="true">✓</span><span>Your support request was submitted successfully.</span></div>}
       <div className={styles.filters} role="group" aria-label="Filter requests by status">
         {FILTERS.map((item) => <button
           key={item}

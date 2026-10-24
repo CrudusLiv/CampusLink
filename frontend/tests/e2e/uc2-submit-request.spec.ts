@@ -47,7 +47,8 @@ test("TCUC2_8 submits a support request through the student form", async ({ page
   await page.getByRole("button", { name: "Online", exact: true }).click();
   await page.getByRole("button", { name: "Submit request" }).click();
 
-  await expect(page).toHaveURL(/\/support-requests$/);
+  await expect(page).toHaveURL(/\/support-requests\?submitted=1$/);
+  await expect(page.getByText("Your support request was submitted successfully.", { exact: true })).toBeVisible();
 
   const requestRow = page.getByRole("row").filter({ hasText: title });
   await expect(requestRow).toBeVisible({ timeout: 60_000 });
@@ -86,7 +87,7 @@ test("TCUC2_9 shows validation feedback when the request category is missing", a
 
   await page.getByRole("button", { name: "Submit request" }).click();
 
-  await expect(page.locator('p[role="alert"]')).toHaveText("Choose a category for your request.");
+  await expect(page.locator('p[role="alert"]')).toHaveText("Please select a category.");
   await expect(page).toHaveURL(/\/sessions\/ask-for-support$/);
   expect(requestPosts).toBe(0);
 

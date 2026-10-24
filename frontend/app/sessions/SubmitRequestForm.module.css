@@ -29,6 +29,7 @@
   gap: 0.5rem;
 }
 
+
 .label {
   font-size: 0.875rem;
   font-weight: 600;
@@ -121,6 +122,13 @@
 }
 
 .formError { margin: 0; color: #991b1b; font-size: 0.8125rem; line-height: 1.4; }
+.validationTooltip { position: relative; display: flex; width: fit-content; max-width: 100%; align-items: center; gap: 0.5rem; margin: 0.15rem 0 0.35rem; padding: 0.55rem 0.75rem; border: 1px solid #8b8b8b; border-radius: 5px; background: #fff; box-shadow: 0 2px 5px rgb(0 0 0 / 24%); color: #111827; font-size: 0.875rem; line-height: 1.35; }
+.validationTooltip::after { content: ""; position: absolute; top: -6px; left: 1rem; width: 10px; height: 10px; border-top: 1px solid #8b8b8b; border-left: 1px solid #8b8b8b; background: #fff; transform: rotate(45deg); }
+.validationTooltip::before { content: "!"; display: grid; width: 1.25rem; height: 1.25rem; flex: 0 0 1.25rem; place-items: center; border-radius: 2px; background: #ed5b00; color: #fff; font-size: 1rem; font-weight: 700; }
+.dateInputWrap { position: relative; }
+.dateInputWithLabel { color: transparent; }
+.dateInputWithLabel::-webkit-datetime-edit { color: transparent; }
+.dateDisplay { position: absolute; top: 50%; left: 1rem; z-index: 1; color: #111827; font-size: 0.875rem; transform: translateY(-50%); pointer-events: none; }
 
 /* Volunteer Side Panel */
 .volunteerSection {
@@ -175,7 +183,7 @@
 .matchHeading, .matchMessage, .matchError { margin: 0; font-size: 0.8125rem; }
 .matchHeading { color: #3f3f46; font-weight: 700; }
 .matchMessage { color: #71717a; line-height: 1.5; }
-.matchError { color: #b91c1c; }
+.matchError { color: #991b1b; line-height: 1.4; }
 .matchCard { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border: 1px solid #d4d4d8; border-radius: 0.5rem; background: #fff; }
 .matchAvatar, .matchAvatarFallback { width: 40px; height: 40px; flex: 0 0 40px; border: 1px solid #d4d4d8; border-radius: 50%; background: #f4f4f5; object-fit: cover; }
 .matchAvatarFallback { display: grid; place-items: center; color: #3f3f46; font-size: 0.75rem; font-weight: 700; }

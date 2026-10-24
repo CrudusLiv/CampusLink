@@ -4,10 +4,11 @@ import SupportRequestsTable from "./SupportRequestsTable";
 
 export const metadata: Metadata = { title: "My Support Requests | CampusLink" };
 
-export default function SupportRequestsPage() {
+export default async function SupportRequestsPage({ searchParams }: { searchParams: Promise<{ submitted?: string }> }) {
+  const { submitted } = await searchParams;
   return (
     <AppShell title="My Support Requests">
-      <SupportRequestsTable />
+      <SupportRequestsTable showSubmittedToast={submitted === "1"} />
     </AppShell>
   );
 }
