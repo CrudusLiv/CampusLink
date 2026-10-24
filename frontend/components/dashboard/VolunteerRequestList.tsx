@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { scheduleSession } from "@/lib/sessions/client";
@@ -14,6 +14,10 @@ import {
   type VolunteerRequestView,
 } from "@/lib/support-requests/volunteer-requests";
 import styles from "./VolunteerDashboard.module.css";
+import historyStyles from "@/app/support-history/support-history.module.css";
+
+const HISTORY_FILTERS = ["All", "Completed", "Cancelled", "Declined"] as const;
+type HistoryFilter = (typeof HISTORY_FILTERS)[number];
 
 type VolunteerRequest = VolunteerRequestItem & { isFree: boolean };
 
@@ -49,7 +53,19 @@ export default function VolunteerRequestList({ view }: { view: VolunteerRequestV
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [respondingId, setRespondingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("All");
   const config = VIEW_CONFIG[view];
+
+  const filteredHistoryItems = useMemo(() => {
+    const term = historySearch.trim().toLocaleLowerCase();
+    return items.filter((item) => {
+      const matchesStatus = historyFilter === "All" || item.status === historyFilter;
+      const matchesSearch = !term || [item.title, item.category, item.requester_name, item.requested_date, item.status, item.support_mode ?? ""]
+        .some((value) => value.toLocaleLowerCase().includes(term));
+      return matchesStatus && matchesSearch;
+    });
+  }, [items, historySearch, historyFilter]);
 
   useEffect(() => {
     if (!profile) return;
@@ -151,12 +167,19 @@ export default function VolunteerRequestList({ view }: { view: VolunteerRequestV
 
   return (
     <main className={styles.content}>
+      {view === "history" && <>
+        <label className={historyStyles.searchLabel} htmlFor="volunteer-history-search">Search or filter by category</label>
+        <input id="volunteer-history-search" className={historyStyles.search} type="search" value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Search or filter by category" />
+        <div className={historyStyles.filters} role="group" aria-label="Filter support history by status">
+          {HISTORY_FILTERS.map((item) => <button key={item} type="button" className={historyFilter === item ? `${historyStyles.filterButton} ${historyStyles.filterActive}` : historyStyles.filterButton} aria-pressed={historyFilter === item} onClick={() => setHistoryFilter(item)}>{item}</button>)}
+        </div>
+      </>}
       {actionError && <p className={styles.error} role="alert">{actionError}</p>}
       {state === "loading" ? <p className={styles.empty}>Loading…</p> : state === "error" ? (
         <p className={styles.error} role="alert">We couldn&apos;t load this list. Check that the volunteer dashboard migration has been applied.</p>
-      ) : items.length === 0 ? <p className={styles.empty}>{config.empty}</p> : (
+      ) : (view === "history" ? filteredHistoryItems.length === 0 : items.length === 0) ? <p className={styles.empty}>{view === "history" && items.length > 0 ? "No history matches your search." : config.empty}</p> : (
         <ul className={styles.list}>
-          {items.map((item) => <li key={item.id} className={styles.requestCard}>
+          {(view === "history" ? filteredHistoryItems : items).map((item) => <li key={item.id} className={styles.requestCard}>
             <div>
               <strong>{item.requester_name}</strong>
               <span>{item.title} · {item.category}</span>
