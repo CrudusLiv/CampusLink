@@ -2,9 +2,7 @@
 import { mapDbError, type ApiError } from './errors';
 import type { FeedbackInput, ScheduleInput } from './schemas';
 import { loadParticipants, type Db } from './server';
-import { generateSlots } from './slots';
-import type { AvailabilityRow, AwaitingRequest, DayOfWeek, ScheduleContext, SessionView } from './types';
-import { getAcceptedRequest } from './wrappers';
+import type { ScheduleContext, SessionView } from './types';
 
 type SessionRow = {
   session_id: string;
@@ -52,56 +50,6 @@ async function loadFeedback(db: Db, sessionIds: string[]): Promise<Map<string, {
   if (sessionIds.length === 0) return new Map();
   const { data } = await db.from('feedback').select('session_id,rating,comment').in('session_id', sessionIds);
   return new Map((data ?? []).map((f) => [f.session_id, { rating: f.rating, feedback: f.comment ?? undefined }]));
-}
-
-/** Keep only the requests whose id is not in `scheduledIds`. */
-export function withoutScheduled<T extends { request_id: string }>(requests: T[], scheduledIds: Iterable<string>): T[] {
-  const taken = new Set(scheduledIds);
-  return requests.filter((r) => !taken.has(r.request_id));
-}
-
-/** The viewer's Accepted requests that do not have a Scheduled session yet, newest first. */
-export async function listAwaitingRequests(db: Db, viewerId: string): Promise<AwaitingRequest[]> {
-  const { data, error } = await db
-    .from('support_request')
-    .select('request_id,title,category,requester_id,volunteer_id')
-    .eq('status', 'Accepted')
-    .not('volunteer_id', 'is', null)
-    .order('created_at', { ascending: false });
-  if (error) throw new Error(error.message);
-  const accepted = data ?? [];
-  if (accepted.length === 0) return [];
-
-  const { data: booked, error: bookedError } = await db
-    .from('session')
-    .select('request_id')
-    .eq('status', 'Scheduled')
-    .in('request_id', accepted.map((r) => r.request_id));
-  if (bookedError) throw new Error(bookedError.message);
-
-  const open = withoutScheduled(accepted, (booked ?? []).map((b) => b.request_id));
-  const people = await loadParticipants(db, open.flatMap((r) => [r.requester_id, r.volunteer_id]));
-  return open.flatMap((r) => {
-    const other = people.get(viewerId === r.requester_id ? r.volunteer_id : r.requester_id);
-    return other ? [{ requestId: r.request_id, requestTitle: r.title, category: r.category, other }] : [];
-  });
-}
-
-/** Everything the Schedule screen needs: the request, and the volunteer's free one-hour slots. */
-export async function getScheduleOptions(db: Db, requestId: string): Promise<{ context: ScheduleContext; slots: string[] } | null> {
-  const context = await getAcceptedRequest(db, requestId);
-  if (!context) return null;
-  const [avail, busy] = await Promise.all([
-    db.from('availability').select('day_of_week,start_time,end_time').eq('user_id', context.volunteer.id),
-    db.rpc('get_busy_times', { p_request_id: requestId }),
-  ]);
-  const rows: AvailabilityRow[] = (avail.data ?? []).map((a) => ({
-    dayOfWeek: a.day_of_week as DayOfWeek,
-    startTime: a.start_time,
-    endTime: a.end_time,
-  }));
-  const busyStarts = ((busy.data ?? []) as { scheduled_datetime: string }[]).map((b) => b.scheduled_datetime);
-  return { context, slots: generateSlots(rows, busyStarts) };
 }
 
 /** Insert the session. The database has the last word on clashes, so a lost race comes back as slot_taken. */

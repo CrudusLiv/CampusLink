@@ -14,9 +14,8 @@ Built for **BIT216 Software Engineering Principles** as a three-person team proj
 | Ask for support: submit, edit and cancel requests; browse volunteers | Working |
 | Volunteer: see incoming requests, accept or decline | Working |
 | **Accepting a request books the session** at the time the requester chose; Accept is blocked when the volunteer is not free then | Working |
-| **Schedule a support session by hand** from an accepted request (slot picker, mode, optional meeting link, double-booking protection). Used when auto-booking fails, and the only way to add a meeting link | Working |
-| **My Support Sessions**: upcoming list, soonest first, "Within 24h" highlight, empty/loading/error states | Working |
-| Reschedule, cancel, mark completed, star rating on a session | **Prototype only.** Saved in the browser, not the database |
+| **My Support Sessions**: upcoming list, soonest first, "Within 24h" highlight, empty/loading/error states, and a Past sessions list (completed, cancelled, time passed) | Working |
+| Cancel a session; the volunteer marks it completed after it starts; the Help Seeker rates it 1 to 5 stars with an optional comment (once, read-only after) | Working (needs migration `20261021000100_session_cancel_feedback.sql`) |
 | Admin dashboard and user registrations | **Placeholder only** |
 | Session reminder notifications, in-app video | Not built (video is out of scope by design: use a Meet or Zoom link) |
 
@@ -54,12 +53,12 @@ Open the site (locally `http://localhost:3000`, or the Vercel URL). Sign in with
 **As a volunteer**
 1. Open **My Profile** and switch to **Volunteer**. The first time, go to **Skills & Availability** and save your weekly availability. Sessions can only be booked inside it.
 2. **Incoming Requests** lists Pending requests sent to you. **Accept** books the session at the requested time. It shows **Not available** (disabled) when you are outside your availability or already booked at that time. **Decline** rejects the request.
-3. **My Sessions** shows your upcoming sessions and any accepted request that still has no session (for example if booking failed). Click **Schedule session** to pick a free time, a mode and an optional https meeting link, then **Confirm Support Session**.
+3. **My Sessions** shows your upcoming and past sessions. Open a session to cancel it, or to **Mark as completed** once its time has started.
 
 **Rules to know**
 - Times are one-hour slots in Kuala Lumpur time. A request for a time that is not on the hour is shown as Not available.
 - A person cannot be booked twice at the same time, across all their requests. The message is "That time is no longer available, please pick a different time".
-- A session booked by Accept has no meeting link. To add a link, schedule by hand.
+- A session booked by Accept has no meeting link yet (still to be designed).
 
 ## Running it locally
 
@@ -135,7 +134,7 @@ If someone applied a migration by pasting it into the SQL editor, Supabase will 
 
 ## How sessions work
 
-- A session is created from an **accepted** support request. Normally it is booked automatically when the volunteer clicks Accept, at the time the requester chose. If that fails, the request stays Accepted and either person can schedule it by hand.
+- A session is created from an **accepted** support request. Normally it is booked automatically when the volunteer clicks Accept, at the time the requester chose. If that fails, the volunteer sees the reason and the request stays Accepted.
 - Offered times come from the volunteer's weekly availability, in **one-hour slots**, read as **Asia/Kuala_Lumpur** time. Everything is stored in UTC.
 - Neither person can be booked at overlapping times, across all their requests. A request can have only one scheduled session at a time.
 - These rules are enforced **in the database** (a trigger plus RLS policies), so they hold even if someone skips the app and talks to Supabase directly. The API turns database errors into clear messages (409 "That time is no longer available, please pick a different time").
@@ -145,10 +144,10 @@ API routes:
 
 | Route | Purpose |
 |---|---|
-| `POST /api/sessions` | Schedule a session |
-| `GET /api/sessions?status=Scheduled&upcoming=true` | List the signed-in user's sessions |
-| `GET /api/sessions/schedule-context?requestId=` | The accepted request and its free slots |
-| `GET /api/sessions/awaiting` | Accepted requests that still need a time |
+| `POST /api/sessions` | Book a session (called when a volunteer accepts a request) |
+| `GET /api/sessions?status=Scheduled&upcoming=true` | List the signed-in user's upcoming sessions (`?history=true` for past ones, `?id=` for one) |
+| `PATCH /api/sessions` | `{ sessionId, action: "complete" \| "cancel" }` |
+| `POST /api/sessions/feedback` | The Help Seeker's rating and comment, once per session |
 
 All routes expect an `Authorization: Bearer <access token>` header and run every query as that user.
 
@@ -162,7 +161,6 @@ To put the upcoming list on a dashboard, render `<UpcomingSessions />` from `fro
 ## Known issues
 
 - Lint reports about 17 errors, mostly in pages that load data inside effects and a few unescaped apostrophes. They do not affect the build.
-- The session detail page (`/sessions/[id]`) saves reschedule, cancel, complete and rating to browser storage only. They need real database writes and the `feedback` table.
 - Sessions booked by Accept have no meeting link, and In-Person sessions have no venue field. A link or venue step is still to be designed.
 - The Accept button lives in Darryl's volunteer dashboard (`components/dashboard/VolunteerRequestList.tsx`) and calls the sessions API to book the session.
 - `npm audit` reports vulnerabilities in dependencies that have not been reviewed yet.

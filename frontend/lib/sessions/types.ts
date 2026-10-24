@@ -30,12 +30,4 @@ export type ScheduleContext = {
   volunteer: Participant;
 };
 
-/** An accepted support request that has no Scheduled session yet: it still needs a time. */
-export type AwaitingRequest = {
-  requestId: string;
-  requestTitle: string;
-  category: string;
-  other: Participant; // the person on the other side of the request
-};
-
 export type AvailabilityRow = { dayOfWeek: DayOfWeek; startTime: string; endTime: string }; // 'HH:MM[:SS]'

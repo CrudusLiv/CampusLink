@@ -1,7 +1,7 @@
 // Browser-side data facade for the sessions screens. Talks to /api/sessions with the signed-in user's token.
 import { supabase } from '@/lib/supabaseClient';
 import type { ScheduleInput } from './schemas';
-import type { AwaitingRequest, ScheduleContext, SessionView } from './types';
+import type { SessionView } from './types';
 
 // ---- API calls ----
 async function api(path: string, init: { method?: string; body?: unknown } = {}) {
@@ -39,21 +39,7 @@ export async function fetchSession(id: string): Promise<SessionView | null> {
   return (body.sessions as SessionView[])[0] ?? null;
 }
 
-/** Accepted requests that still need a session time. */
-export async function fetchAwaiting(): Promise<AwaitingRequest[]> {
-  const { status, body } = await api('/api/sessions/awaiting');
-  if (status !== 200 || !body) throw new Error(`Could not load accepted requests (${status})`);
-  return body.requests as AwaitingRequest[];
-}
-
-/** The accepted request + free slots for the Schedule screen. null = not found / not accepted / not yours. */
-export async function fetchScheduleOptions(requestId: string): Promise<{ context: ScheduleContext; slots: string[] } | null> {
-  const { status, body } = await api(`/api/sessions/schedule-context?requestId=${encodeURIComponent(requestId)}`);
-  if (status === 404) return null;
-  if (status !== 200 || !body) throw new Error(`Could not load scheduling options (${status})`);
-  return body as unknown as { context: ScheduleContext; slots: string[] };
-}
-
+/** Used by the volunteer's Accept button, which books the session at the time the Help Seeker asked for. */
 export type ScheduleResult = { ok: true; session: SessionView } | { ok: false; error: string; message: string };
 
 export async function scheduleSession(input: ScheduleInput): Promise<ScheduleResult> {
