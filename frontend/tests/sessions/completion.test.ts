@@ -16,6 +16,8 @@ describe('completeSession persistence helper', () => {
     [{ message: 'SESSION_NOT_FOUND', code: 'P0002' }, 404, 'not_found'],
     [{ message: 'NOT_PARTICIPANT', code: '42501' }, 403, 'forbidden'],
     [{ message: 'SESSION_NOT_SCHEDULED', code: 'P0001' }, 409, 'invalid_status'],
+    [{ message: 'SESSION_NOT_STARTED', code: 'P0001' }, 409, 'not_started'],
+    [{ message: 'NOT_VOLUNTEER', code: '42501' }, 403, 'forbidden'],
     [{ message: 'REQUEST_NOT_ACCEPTED', code: 'P0001' }, 409, 'invalid_status'],
     [{ message: 'internal detail', code: 'XX000' }, 500, 'unknown'],
   ])('maps database error %s to an API error', async (error, status, code) => {
