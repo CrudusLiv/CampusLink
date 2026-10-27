@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fieldErrors, listQuerySchema, scheduleSchema } from '@/lib/sessions/schemas';
+import { fieldErrors, listQuerySchema, scheduleSchema, feedbackSchema } from '@/lib/sessions/schemas';
 
 const valid = {
   requestId: 'b1b2c3d4-0001-4000-8000-000000000001',
@@ -16,7 +16,7 @@ describe('scheduleSchema', () => {
   it('does not require a meeting link', () => {
     const { meetingLink: _omit, ...rest } = valid;
     void _omit;
-    expect(scheduleSchema.safeParse({ ...rest, supportMode: 'Chat' }).success).toBe(true);
+    expect(scheduleSchema.safeParse({ ...rest, supportMode: 'In-Person' }).success).toBe(true);
   });
 
   it('accepts an offset timestamp as well as Z', () => {
@@ -45,10 +45,26 @@ describe('scheduleSchema', () => {
 
 describe('listQuerySchema', () => {
   it('parses the upcoming flag into a boolean', () => {
-    expect(listQuerySchema.parse({ status: 'Scheduled', upcoming: 'true' })).toEqual({ status: 'Scheduled', upcoming: true });
+    expect(listQuerySchema.parse({ status: 'Scheduled', upcoming: 'true' })).toEqual({ status: 'Scheduled', upcoming: true, history: false });
     expect(listQuerySchema.parse({}).upcoming).toBe(false);
   });
   it('rejects unknown statuses', () => {
     expect(listQuerySchema.safeParse({ status: 'Nope' }).success).toBe(false);
+  });
+});
+
+describe('support modes', () => {
+  it('rejects the removed Chat / text-only mode', () => {
+    expect(scheduleSchema.safeParse({ ...valid, supportMode: 'Chat' }).success).toBe(false);
+  });
+});
+
+describe('feedbackSchema', () => {
+  const sessionId = 'c1b2c3d4-0001-4000-8000-000000000001';
+  it('needs a 1 to 5 star rating; the comment is optional', () => {
+    expect(feedbackSchema.safeParse({ sessionId, rating: 5 }).success).toBe(true);
+    expect(feedbackSchema.safeParse({ sessionId, rating: 0 }).success).toBe(false);
+    expect(feedbackSchema.safeParse({ sessionId, rating: 6 }).success).toBe(false);
+    expect(feedbackSchema.safeParse({ sessionId }).success).toBe(false);
   });
 });

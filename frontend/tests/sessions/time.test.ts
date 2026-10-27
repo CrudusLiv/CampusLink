@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, formatTime, isWithin24h, klDateKey } from '@/lib/sessions/time';
+import { formatDate, formatDateTime, formatRange, formatTime, hasEnded, isWithin24h, klDateKey } from '@/lib/sessions/time';
 
 const NOW = Date.parse('2026-10-12T01:00:00Z');
 const at = (ms: number) => new Date(NOW + ms).toISOString();
@@ -32,5 +32,16 @@ describe('Kuala Lumpur display', () => {
   it('formats a readable date', () => {
     expect(formatDate('2026-10-12T02:00:00Z')).toMatch(/Mon/);
     expect(formatDate('2026-10-12T02:00:00Z')).toMatch(/12/);
+  });
+});
+
+describe('session display helpers', () => {
+  const iso = '2026-10-27T02:00:00Z'; // Tue 27 Oct, 10:00 AM in Kuala Lumpur
+  it('shows the weekday, date and time', () => expect(formatDateTime(iso)).toBe('Tue, 27 Oct, 10:00 AM'));
+  it('shows a one-hour range', () => expect(formatRange(iso)).toBe('10:00 AM – 11:00 AM'));
+  it('has ended only once the hour is over', () => {
+    const start = Date.parse(iso);
+    expect(hasEnded(iso, start + HOUR - 1)).toBe(false);
+    expect(hasEnded(iso, start + HOUR)).toBe(true);
   });
 });

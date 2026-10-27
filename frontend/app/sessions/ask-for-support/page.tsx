@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/layout/AppShell';
 import { SubmitRequestForm } from '@/app/sessions/SubmitRequestForm';
@@ -15,7 +16,9 @@ export default async function AskForSupportPage() {
             ← Back to Dashboard
           </Link>
         </p>
-        <SubmitRequestForm />
+        <Suspense fallback={null}>
+          <SubmitRequestForm />
+        </Suspense>
       </main>
     </AppShell>
   );
