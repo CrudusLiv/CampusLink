@@ -153,12 +153,12 @@ export default function VolunteerRequestList({ view }: { view: VolunteerRequestV
 
     // If booking fails, the accepted request remains available under My Sessions for manual scheduling.
     if (status === "Accepted") {
-      const mode = SUPPORT_MODES.find((candidate) => candidate === request.support_mode);
+      const mode = SUPPORT_MODES.find((candidate) => candidate.toLowerCase() === request.support_mode?.toLowerCase()); // the request form saves "In-person"
       const booked = mode
         ? await scheduleSession({ requestId, scheduledDatetime: requestedIso(request.requested_date, request.requested_time), supportMode: mode })
         : null;
       if (!booked?.ok) {
-        setActionError(`Request accepted, but the session was not booked: ${booked?.message ?? "no support mode was chosen"}. Schedule it from My Sessions.`);
+        setActionError(`Request accepted, but the session was not booked: ${booked?.message ?? "no support mode was chosen"}.`);
       }
     }
     setRespondingId(null);
