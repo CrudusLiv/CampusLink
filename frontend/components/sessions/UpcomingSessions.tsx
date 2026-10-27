@@ -11,7 +11,7 @@ import s from './sessions.module.css';
 type State = { status: 'loading' } | { status: 'error' } | { status: 'ready'; sessions: SessionView[]; now: number };
 
 /** Drop-in "upcoming sessions" list for any dashboard. Fetches its own data. */
-export function UpcomingSessions({ preview }: { preview?: PreviewState }) {
+export function UpcomingSessions({ preview, limit }: { preview?: PreviewState; limit?: number }) {
   const [state, setState] = useState<State>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
 
@@ -54,7 +54,7 @@ export function UpcomingSessions({ preview }: { preview?: PreviewState }) {
 
   return (
     <ul className={s.list}>
-      {state.sessions.map((session) => (
+      {state.sessions.slice(0, limit).map((session) => (
         <SessionCard key={session.id} session={session} now={state.now} />
       ))}
     </ul>

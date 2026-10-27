@@ -3,174 +3,161 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { Avatar } from "@/components/sessions/Avatar";
-import { fetchSession, persistSessionCompletion, updateMockSession } from "@/lib/sessions/client";
-import { formatDate, formatTime } from "@/lib/sessions/time";
+import { cancelSession, completeSession, fetchSession, sendFeedback } from "@/lib/sessions/client";
+import { formatDate, formatRange } from "@/lib/sessions/time";
 import type { SessionView } from "@/lib/sessions/types";
 import styles from "./session-detail.module.css";
 
-function toLocalDateTime(value: string) {
-  const date = new Date(value);
-  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
-  return date.toISOString().slice(0, 16);
-}
+const Stars = ({ value }: { value: number }) => (
+  <span className={styles.starsStatic} role="img" aria-label={`${value} out of 5 stars`}>{"★".repeat(value)}{"☆".repeat(5 - value)}</span>
+);
 
 export default function SessionDetail({ sessionId }: { sessionId: string }) {
   const [session, setSession] = useState<SessionView | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showReschedule, setShowReschedule] = useState(false);
-  const [newDateTime, setNewDateTime] = useState("");
-  const [rescheduleNote, setRescheduleNote] = useState("");
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [rating, setRating] = useState(0);
-  const [feedback, setFeedback] = useState("");
+  const [comment, setComment] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [completing, setCompleting] = useState(false);
+
+  const [reloads, setReloads] = useState(0);
+  const [now, setNow] = useState(0);
 
   useEffect(() => {
-    let active = true;
-    fetchSession(sessionId).then((record) => {
-      if (active) {
-        setSession(record);
-        setRating(record?.rating ?? 0);
-        setFeedback(record?.feedback ?? "");
-        if (record) setNewDateTime(toLocalDateTime(record.scheduledDatetime));
-        setLoading(false);
-      }
-    });
-    return () => { active = false; };
-  }, [sessionId]);
+    let live = true;
+    fetchSession(sessionId)
+      .then((record) => live && (setSession(record), setLoadFailed(false)))
+      .catch(() => live && setLoadFailed(true))
+      .finally(() => live && (setNow(Date.now()), setLoading(false)));
+    return () => { live = false; };
+  }, [sessionId, reloads]);
 
-  function saveUpdate(update: Partial<SessionView>, successMessage: string) {
+  const load = () => setReloads((n) => n + 1);
+
+  /** Run an action, show the result, and reload so the page always shows what is really saved. */
+  async function run(action: () => Promise<{ ok: true } | { ok: false; message: string }>, done: string) {
+    setBusy(true);
+    setMessage("");
     setError("");
-    if (!updateMockSession(sessionId, update)) {
-      setError("This browser couldn't save the change. Check that local storage is available and try again.");
-      return false;
+    const result = await action().catch(() => ({ ok: false as const, message: "Something went wrong. Please try again." }));
+    if (result.ok) {
+      setMessage(done);
+      setConfirmCancel(false);
+      load();
+    } else {
+      setError(result.message);
     }
-    setSession((current) => current ? { ...current, ...update } : current);
-    setMessage(successMessage);
-    return true;
+    setBusy(false);
   }
 
-  function submitRating(event: FormEvent<HTMLFormElement>) {
+  function submitFeedback(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMessage("");
     if (rating < 1) {
+      setMessage("");
       setError("Choose a star rating before submitting.");
       return;
     }
-    saveUpdate({ rating, feedback: feedback.trim() }, "Thanks! Your rating has been saved on this device.");
-  }
-
-  function submitReschedule(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setMessage("");
-    setError("");
-    const date = new Date(newDateTime);
-    if (!newDateTime || Number.isNaN(date.getTime()) || date.getTime() <= Date.now()) {
-      setError("Choose a future date and time.");
-      return;
-    }
-    if (saveUpdate({ scheduledDatetime: date.toISOString(), rescheduleNote: rescheduleNote.trim() }, "The new session time has been saved on this device.")) {
-      setShowReschedule(false);
-    }
-  }
-
-  async function finishSession(status: "Completed" | "Cancelled") {
-    setMessage("");
-    setError("");
-    if (status === "Completed") {
-      setCompleting(true);
-      try {
-        const result = await persistSessionCompletion(sessionId);
-        if (!result.ok) {
-          setError(result.message);
-          return;
-        }
-        setSession((current) => current ? { ...current, status: "Completed" } : current);
-        setMessage("Session marked as completed and saved.");
-      } catch {
-        setError("We could not complete this session. Please try again.");
-      } finally {
-        setCompleting(false);
-      }
-      return;
-    }
-    saveUpdate({ status }, "Session cancelled.");
+    void run(() => sendFeedback(sessionId, rating, comment), "Thank you! Your feedback has been saved.");
   }
 
   if (loading) return <main className={styles.content}><p className={styles.message}>Loading session…</p></main>;
-  if (!session) return (
+  if (loadFailed || !session) return (
     <main className={styles.content}>
-      <p className={styles.message}>We could not find this session.</p>
+      <p className={styles.message}>{loadFailed ? "We could not load this session. Please try again." : "We could not find this session."}</p>
       <Link className={styles.backLink} href="/sessions">← Back to My Support Sessions</Link>
     </main>
   );
 
   const iso = session.scheduledDatetime;
-  const active = session.status === "Scheduled";
+  const isVolunteer = session.other.id === session.requester.id;
+  const started = new Date(iso).getTime() <= now;
+  const hasFeedback = session.rating !== undefined;
 
   return (
     <main className={styles.content}>
       <p className={styles.backRow}><Link className={styles.backLink} href="/sessions">← My Support Sessions</Link></p>
-      <div className={styles.columns}>
-        <section className={styles.sessionColumn} aria-label="Session details">
-          <div className={styles.summary}>
-            <Avatar person={session.other} />
-            <div className={styles.summaryText}>
-              <h2 className={styles.title}>{session.requestTitle}</h2>
-              <p>{session.other.name} · {session.supportMode}</p>
-              <p><time dateTime={iso}>{formatDate(iso)} · {formatTime(iso)}</time></p>
-              {session.meetingLink && <a className={styles.meetingLink} href={session.meetingLink} target="_blank" rel="noopener noreferrer">Open meeting link</a>}
-            </div>
-            <span className={styles.status}>{session.status}</span>
+
+      <section className={styles.card} aria-label="Session details">
+        <div className={styles.summary}>
+          <Avatar person={session.other} />
+          <div className={styles.summaryText}>
+            <h2 className={styles.title}>{session.requestTitle}</h2>
+            <p>With {session.other.name}</p>
           </div>
+          <span className={`${styles.status} ${styles[`status${session.status}`]}`}>{session.status}</span>
+        </div>
+        <dl className={styles.facts}>
+          <div><dt>When</dt><dd><time dateTime={iso}>{formatDate(iso)}, {formatRange(iso)}</time> (1 hour)</dd></div>
+          <div><dt>How</dt><dd>{session.supportMode}</dd></div>
+          {session.requestDescription && <div><dt>Request</dt><dd className={styles.description}>{session.requestDescription}</dd></div>}
+          {session.meetingLink && <div><dt>Link</dt><dd><a className={styles.meetingLink} href={session.meetingLink} target="_blank" rel="noopener noreferrer">Open meeting link</a></dd></div>}
+        </dl>
 
-          {message && <p className={styles.success} role="status">{message}</p>}
-          {error && <p className={styles.error} role="alert">{error}</p>}
+        {message && <p className={styles.success} role="status">{message}</p>}
+        {error && <p className={styles.error} role="alert">{error}</p>}
 
-          {active ? <>
-            <div className={styles.actions}>
-              <button className={styles.secondaryButton} type="button" onClick={() => { setShowReschedule((open) => !open); setMessage(""); setError(""); }}>
-                {showReschedule ? "Close reschedule" : "Reschedule"}
-              </button>
-              <button className={styles.secondaryButton} type="button" onClick={() => finishSession("Cancelled")}>Cancel session</button>
-            </div>
+        {session.status === "Scheduled" && (
+          <div className={styles.actions}>
+            {isVolunteer && (
+              <div className={styles.action}>
+                <button className={styles.primaryButton} type="button" disabled={busy || !started} onClick={() => void run(() => completeSession(sessionId), "Session marked as completed.")}>
+                  Mark as completed
+                </button>
+                {!started && <p className={styles.hint}>You can mark this session as completed once it has started ({formatDate(iso)}, {formatRange(iso)}).</p>}
+              </div>
+            )}
+            {confirmCancel ? (
+              <div className={styles.confirmBox} role="alertdialog" aria-labelledby="cancel-q">
+                <p id="cancel-q" className={styles.confirmText}>Cancel this session? This cannot be undone.</p>
+                <button className={styles.dangerButton} type="button" disabled={busy} onClick={() => void run(() => cancelSession(sessionId), "Session cancelled.")}>Yes, cancel session</button>
+                <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => setConfirmCancel(false)}>Keep session</button>
+              </div>
+            ) : (
+              <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => { setConfirmCancel(true); setMessage(""); setError(""); }}>Cancel session</button>
+            )}
+          </div>
+        )}
+        {session.status === "Cancelled" && <p className={styles.closedNotice}>This session was cancelled.</p>}
+      </section>
 
-            {showReschedule && <form className={styles.rescheduleForm} onSubmit={submitReschedule}>
-              <label className={styles.label} htmlFor="session-new-time">New date and time</label>
-              <input id="session-new-time" className={styles.input} type="datetime-local" value={newDateTime} onChange={(event) => setNewDateTime(event.target.value)} required />
-              <label className={styles.label} htmlFor="reschedule-note">Reschedule description (optional)</label>
-              <textarea id="reschedule-note" className={styles.input} rows={3} value={rescheduleNote} onChange={(event) => setRescheduleNote(event.target.value)} placeholder="Add a note about the new time" />
-              <button className={styles.primaryButton} type="submit">Save new time</button>
-            </form>}
-
-            <button className={styles.primaryButton} type="button" onClick={() => void finishSession("Completed")} disabled={completing}>
-              {completing ? "Saving…" : "Mark as completed"}
-            </button>
-          </> : <p className={styles.closedNotice}>This session is {session.status.toLowerCase()}.</p>}
+      {session.status === "Completed" && (
+        <section className={styles.card} aria-labelledby="feedback-title">
+          <h2 id="feedback-title" className={styles.panelTitle}>Feedback</h2>
+          {hasFeedback ? (
+            <>
+              <Stars value={session.rating!} />
+              <p className={styles.comment}>{session.feedback || "No comment left."}</p>
+            </>
+          ) : isVolunteer ? (
+            <p className={styles.hint}>{session.other.name} has not left feedback yet.</p>
+          ) : (
+            <form className={styles.feedbackForm} onSubmit={submitFeedback}>
+              <fieldset className={styles.ratingFieldset}>
+                <legend className={styles.label}>How was your session?</legend>
+                <div className={styles.stars}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      className={star <= rating ? styles.starSelected : styles.star}
+                      aria-label={`${star} star${star === 1 ? "" : "s"}`}
+                      aria-pressed={rating === star}
+                      onClick={() => { setRating(star); setError(""); }}
+                    >★</button>
+                  ))}
+                </div>
+              </fieldset>
+              <label className={styles.label} htmlFor="session-feedback">Comment (optional)</label>
+              <textarea id="session-feedback" className={styles.input} rows={4} value={comment} onChange={(event) => setComment(event.target.value)} maxLength={1000} />
+              <button className={styles.primaryButton} type="submit" disabled={busy}>Submit feedback</button>
+              <p className={styles.hint}>You can only submit feedback once, and it cannot be changed afterwards.</p>
+            </form>
+          )}
         </section>
-
-        <form className={styles.ratingPanel} onSubmit={submitRating}>
-          <h2 className={styles.panelTitle}>Rate your session</h2>
-          <fieldset className={styles.ratingFieldset}>
-            <legend className={styles.srOnly}>Choose a star rating</legend>
-            <div className={styles.stars}>
-              {[1, 2, 3, 4, 5].map((star) => <button
-                key={star}
-                type="button"
-                className={star <= rating ? styles.starSelected : styles.star}
-                aria-label={`${star} star${star === 1 ? "" : "s"}`}
-                aria-pressed={rating === star}
-                onClick={() => { setRating(star); setMessage(""); setError(""); }}
-              >★</button>)}
-            </div>
-          </fieldset>
-          <label className={styles.srOnly} htmlFor="session-feedback">Comment</label>
-          <textarea id="session-feedback" className={styles.comment} rows={5} value={feedback} onChange={(event) => setFeedback(event.target.value)} placeholder="Comment (optional)" maxLength={1000} />
-          <button className={styles.primaryButton} type="submit">{session.rating ? "Update rating" : "Submit rating"}</button>
-          <p className={styles.storageNote}>Session details and feedback are currently stored in this browser only.</p>
-        </form>
-      </div>
+      )}
     </main>
   );
 }
