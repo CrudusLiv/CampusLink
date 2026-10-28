@@ -8,6 +8,7 @@ import { useState, FormEvent } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import styles from "./register.module.css";
+import { useRouter } from "next/navigation";
 
 // The shape of the form data
 type FormData = {
@@ -65,7 +66,8 @@ export function validateRegistration(data: FormData): FormErrors {
 }
 
 export default function RegisterPage() {
-  const [form, setForm] = useState<FormData>({
+  const router = useRouter();
+  const [form, setForm] = useState<FormData> ({
     fullName: "",
     studentId: "",
     email: "",
@@ -123,10 +125,12 @@ export default function RegisterPage() {
       return;
     }
 
-    // First login must go through the emailed code (2FA), so don't keep this session
-    if (data.session) {
-      await supabase.auth.signOut({ scope: "local" });
-    }
+    // Not logged in yet: the first login must pass the email code (2FA)
+if (data.session) {
+  await supabase.auth.signOut({ scope: "local" });
+}
+// Go straight to the login page, with the email filled in
+router.replace(`/login?registered=1&email=${encodeURIComponent(form.email.trim().toLowerCase())}`);
     setCheckEmail(true);
     }
 

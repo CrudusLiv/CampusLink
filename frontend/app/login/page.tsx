@@ -50,6 +50,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [digits, setDigits] = useState<string[]>(EMPTY_CODE);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
 
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
@@ -64,6 +65,16 @@ export default function LoginPage() {
   const lockSecondsLeft = secondsUntil(lockedUntil, now);
   const isLocked = lockSecondsLeft > 0;
   const isExpired = expiresAt !== null && codeSecondsLeft === 0;
+
+  // Coming from the register page: show a message and fill in the email
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("registered") === "1") {
+    setNotice("Account created! Log in with your email and password. We'll then email you a 6-digit code to confirm it's you.");
+  }
+  const fromRegister = params.get("email");
+  if (fromRegister) setEmail(fromRegister);
+}, []);
 
   // Tick every second while the code step is showing (countdown timers)
   useEffect(() => {
@@ -233,9 +244,10 @@ export default function LoginPage() {
           {step === "password" ? (
             <>
               <h1 className={styles.title}>Log in</h1>
-              <p className={styles.subtitle}>Welcome back! Log in with your HELP University email.</p>
+            <p className={styles.subtitle}>Step 1 of 2 · Enter your HELP University email and password.</p>
 
-              {error && <p className={styles.serverError}>{error}</p>}
+          {notice && <p className={styles.success}>{notice}</p>}
+          {error && <p className={styles.serverError}>{error}</p>}
 
               <form onSubmit={handlePasswordSubmit} noValidate className={styles.form}>
                 <div className={styles.field}>
@@ -284,9 +296,13 @@ export default function LoginPage() {
             </>
           ) : (
             <>
-              <h1 className={styles.title}>Check your email</h1>
+              <h1 className={styles.title}>Enter your verification code</h1>
               <p className={styles.subtitle}>
-                We sent a 6-digit code to <strong>{cleanEmail}</strong>. Enter it below to finish logging in.
+                Step 2 of 2 · For your security, we sent a 6-digit code to <strong>{cleanEmail}</strong>.
+                Type it below to finish logging in.
+              </p>
+              <p className={styles.subtitle} style={{ fontSize: "0.8125rem" }}>
+                It can take up to a minute to arrive. Check your Junk folder if you can't find it.
               </p>
 
               {error && <p className={styles.serverError}>{error}</p>}
