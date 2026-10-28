@@ -23,7 +23,6 @@ export default function SessionDetail({ sessionId }: { sessionId: string }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const [reloads, setReloads] = useState(0);
   const [now, setNow] = useState(0);
 
   useEffect(() => {
@@ -33,9 +32,7 @@ export default function SessionDetail({ sessionId }: { sessionId: string }) {
       .catch(() => live && setLoadFailed(true))
       .finally(() => live && (setNow(Date.now()), setLoading(false)));
     return () => { live = false; };
-  }, [sessionId, reloads]);
-
-  const load = () => setReloads((n) => n + 1);
+  }, [sessionId]);
 
   /** Run an action, show the result, and reload so the page always shows what is really saved. */
   async function run(action: () => Promise<{ ok: true } | { ok: false; message: string }>, done: string) {
@@ -44,9 +41,10 @@ export default function SessionDetail({ sessionId }: { sessionId: string }) {
     setError("");
     const result = await action().catch(() => ({ ok: false as const, message: "Something went wrong. Please try again." }));
     if (result.ok) {
+      const fresh = await fetchSession(sessionId).catch(() => null);
+      if (fresh) { setSession(fresh); setNow(Date.now()); }
       setMessage(done);
       setConfirmCancel(false);
-      load();
     } else {
       setError(result.message);
     }
@@ -74,6 +72,7 @@ export default function SessionDetail({ sessionId }: { sessionId: string }) {
   const iso = session.scheduledDatetime;
   const isVolunteer = session.other.id === session.requester.id;
   const started = new Date(iso).getTime() <= now;
+  const tooLateToCancel = new Date(iso).getTime() - now < 24 * 60 * 60 * 1000;
   const hasFeedback = session.rating !== undefined;
 
   return (
@@ -116,7 +115,10 @@ export default function SessionDetail({ sessionId }: { sessionId: string }) {
                 <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => setConfirmCancel(false)}>Keep session</button>
               </div>
             ) : (
-              <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => { setConfirmCancel(true); setMessage(""); setError(""); }}>Cancel session</button>
+              <div className={styles.action}>
+                <button className={styles.secondaryButton} type="button" disabled={busy || tooLateToCancel} onClick={() => { setConfirmCancel(true); setMessage(""); setError(""); }}>Cancel session</button>
+                {tooLateToCancel && <p className={styles.hint}>Sessions can only be cancelled at least 24 hours before they start.</p>}
+              </div>
             )}
           </div>
         )}

@@ -9,7 +9,7 @@ export function EmptyState() {
       </svg>
       <h3 className={s.emptyTitle}>No upcoming support sessions</h3>
       <p className={s.emptyText}>
-        When a Volunteer accepts your support request, the session is booked automatically and appears here.
+        Your sessions will appear here.
         Volunteers: accept a request from the Support Board to get started.
       </p>
     </div>

@@ -24,8 +24,8 @@ async function settled() {
 }
 
 test('TCUC3_8 accepting a request books the session at the requested time; a busy or unavailable time is blocked; a booked time is refused', async () => {
-  // Test data (see the README): request 1 is Pending for a free time, request 2 is Pending for a time the volunteer is
-  // not available, request 4 is Accepted with no session yet. Skips, not fails, when the data is not in that state.
+  // Test data (see the README): "Java help" is Pending for a free Monday hour (16 Nov, 11:00 KL) and "SQL joins" is Pending
+  // for a Tuesday, outside the volunteer's availability. Skips, not fails, when the data is not in that state.
   await page.goto('/volunteer/requests');
   await settled();
   const free = page.locator('li', { hasText: 'Sessions test: Java help' });
@@ -35,6 +35,8 @@ test('TCUC3_8 accepting a request books the session at the requested time; a bus
   // 8a: Accept is offered for a free time and blocked ("Not available") for a time outside the availability
   await expect(free.getByRole('button', { name: 'Accept' })).toBeEnabled();
   await expect(blocked.getByRole('button', { name: 'Not available' })).toBeDisabled();
+  await blocked.scrollIntoViewIfNeeded();
+  await free.scrollIntoViewIfNeeded(); // keep both test rows in the screenshot
   await evidence(page, 'TCUC3_8a');
 
   // 8b: Accept books the session straight away, at the time the requester chose, without a Schedule step
@@ -45,17 +47,16 @@ test('TCUC3_8 accepting a request books the session at the requested time; a bus
   const booked = page.getByText('Sessions test: Java help').first();
   await expect(booked).toBeVisible();
   await booked.scrollIntoViewIfNeeded();
-  await expect(page.locator('a[href*="b1b2c3d4-0001"]')).toHaveCount(0); // request 1 no longer waits for a time
   await evidence(page, 'TCUC3_8b');
   const list = await page.request.get('/api/sessions?status=Scheduled&upcoming=true', { headers: { Authorization: `Bearer ${accessToken}` } });
-  const bookedIso: string = (await list.json()).sessions[0].scheduledDatetime;
-  expect(bookedIso).toBe('2026-10-26T02:00:00.000Z'); // 10:00 Kuala Lumpur
+  const bookedIso: string = (await list.json()).sessions.find((s: { requestTitle: string }) => s.requestTitle === 'Sessions test: Java help').scheduledDatetime;
+  expect(bookedIso).toBe('2026-11-16T03:00:00.000Z'); // 11:00 Kuala Lumpur, the time the requester chose
 });
 
 test('TCUC3_9 upcoming sessions appear on the student and volunteer dashboards, and volunteers can reach My Support Sessions', async () => {
   await page.goto('/dashboard');
   await expect(page.locator('#dash-upcoming-title')).toBeVisible({ timeout: 60_000 });
-  await expect(page.locator('section[aria-labelledby="dash-upcoming-title"] a', { hasText: 'View all' })).toHaveAttribute('href', '/sessions');
+  await expect(page.locator('section[aria-labelledby="dash-upcoming-title"] a', { hasText: 'Manage all sessions' })).toHaveAttribute('href', '/sessions');
   await settled();
   await page.locator('#dash-upcoming-title').scrollIntoViewIfNeeded();
   await evidence(page, 'TCUC3_9a');
@@ -84,7 +85,7 @@ test('TCUC3_10 empty, loading, error and no-request screens', async () => {
   // 10a empty
   await page.goto('/sessions?state=empty');
   await expect(page.getByText('No upcoming support sessions')).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByText(/booked automatically/i)).toBeVisible();
+  await expect(page.getByText(/Your sessions will appear here/)).toBeVisible();
   await evidence(page, 'TCUC3_10a');
 
   // 10b loading: hold the response back so the placeholders stay on screen

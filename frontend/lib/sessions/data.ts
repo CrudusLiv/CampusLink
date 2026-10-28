@@ -92,6 +92,7 @@ function mapRpc({ error }: { error: { message?: string; code?: string } | null }
   if (/SESSION_NOT_FOUND/.test(message)) return fail(404, 'not_found', 'Session not found');
   if (/NOT_VOLUNTEER/.test(message)) return fail(403, 'forbidden', 'Only the volunteer can mark a session as completed');
   if (/NOT_PARTICIPANT/.test(message) || error.code === '42501') return fail(403, 'forbidden', `You can only ${verb} your own support sessions`);
+  if (/CANCEL_TOO_LATE/.test(message)) return fail(409, 'too_late', 'A session can only be cancelled at least 24 hours before it starts');
   if (/SESSION_NOT_STARTED/.test(message)) return fail(409, 'not_started', 'You can mark a session as completed once its time has passed');
   if (/SESSION_NOT_SCHEDULED|REQUEST_NOT_ACCEPTED/.test(message)) {
     return fail(409, 'invalid_status', `Only a scheduled session can be ${verb === 'cancel' ? 'cancelled' : 'completed'}`);
