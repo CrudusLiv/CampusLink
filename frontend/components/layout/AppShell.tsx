@@ -61,7 +61,6 @@ export default function AppShell({ title, children }: { title: string; children:
   const isActive = (href?: string) =>
     !!href &&
     (pathname === href ||
-      (href === "/sessions" && pathname === "/sessions/schedule") ||
       (pathname.startsWith(href + "/") && pathname !== "/sessions/ask-for-support"));
 
   function renderItem(item: Item, base: string, activeClass: string) {

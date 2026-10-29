@@ -6,6 +6,7 @@ const getAcceptedRequest = vi.fn();
 const createSession = vi.fn();
 const listSessions = vi.fn();
 const completeSession = vi.fn();
+const cancelSession = vi.fn();
 
 vi.mock('@/lib/sessions/api', async (original) => ({
   ...(await original<typeof import('@/lib/sessions/api')>()),
@@ -16,6 +17,7 @@ vi.mock('@/lib/sessions/data', () => ({
   createSession: (...a: unknown[]) => createSession(...a),
   listSessions: (...a: unknown[]) => listSessions(...a),
   completeSession: (...a: unknown[]) => completeSession(...a),
+  cancelSession: (...a: unknown[]) => cancelSession(...a),
 }));
 
 const { GET, PATCH, POST } = await import('@/app/api/sessions/route');
@@ -23,7 +25,7 @@ const { GET, PATCH, POST } = await import('@/app/api/sessions/route');
 const ME = { id: 'a1b2c3d4-0001-4000-8000-000000000001', name: 'Me', photoUrl: null, isVolunteer: false };
 const OTHER = { id: 'a1b2c3d4-0002-4000-8000-000000000002', name: 'Other', photoUrl: null };
 const CONTEXT = { requestId: 'b1b2c3d4-0001-4000-8000-000000000001', requestTitle: 'Java help', category: 'Programming', requester: { id: ME.id, name: ME.name, photoUrl: null }, volunteer: OTHER };
-const BODY = { requestId: CONTEXT.requestId, scheduledDatetime: '2026-10-19T00:00:00.000Z', supportMode: 'Chat' };
+const BODY = { requestId: CONTEXT.requestId, scheduledDatetime: '2026-10-19T00:00:00.000Z', supportMode: 'In-Person' };
 
 const post = (body: unknown) => POST(new Request('http://x/api/sessions', { method: 'POST', body: JSON.stringify(body) }));
 const get = (qs = '') => GET(new Request(`http://x/api/sessions${qs}`));
@@ -97,7 +99,7 @@ describe('GET /api/sessions', () => {
     listSessions.mockResolvedValue([{ id: 'c1' }]);
     const res = await get('?status=Scheduled&upcoming=true');
     expect(res.status).toBe(200);
-    expect(listSessions).toHaveBeenCalledWith({}, ME.id, { status: 'Scheduled', upcoming: true });
+    expect(listSessions).toHaveBeenCalledWith({}, ME.id, { status: 'Scheduled', upcoming: true, history: false });
     expect((await res.json()).sessions).toEqual([{ id: 'c1' }]);
   });
 
@@ -129,6 +131,19 @@ describe('PATCH /api/sessions', () => {
     expect(res.status).toBe(200);
     expect(completeSession).toHaveBeenCalledWith({}, sessionId);
     expect(await res.json()).toEqual({ success: true });
+  });
+
+  it('action "cancel" calls the cancel helper, not the complete helper', async () => {
+    const sessionId = 'c1b2c3d4-0001-4000-8000-000000000001';
+    cancelSession.mockResolvedValue({ ok: true });
+    const res = await patch({ sessionId, action: 'cancel' });
+    expect(res.status).toBe(200);
+    expect(cancelSession).toHaveBeenCalledWith({}, sessionId);
+    expect(completeSession).not.toHaveBeenCalled();
+  });
+
+  it('400 for an unknown action (reschedule is not supported)', async () => {
+    expect((await patch({ sessionId: 'c1b2c3d4-0001-4000-8000-000000000001', action: 'reschedule' })).status).toBe(400);
   });
 
   it('preserves authorization and state conflict errors', async () => {

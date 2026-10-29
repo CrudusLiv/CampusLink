@@ -70,8 +70,10 @@ export async function POST(req: Request) {
     return fieldValidation("requested_date", "The selected volunteer is not available on this date.");
   }
   const requestedTime = input.data.requested_time.slice(0, 5);
+  const minutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+  // A session lasts one hour, so the whole hour must fit inside the volunteer's availability.
   const timeIsAvailable = dayAvailability.some((slot) =>
-    slot.start_time.slice(0, 5) <= requestedTime && requestedTime < slot.end_time.slice(0, 5)
+    minutes(slot.start_time) <= minutes(requestedTime) && minutes(requestedTime) + 60 <= minutes(slot.end_time)
   );
   if (!timeIsAvailable) {
     return fieldValidation("requested_time", "The selected volunteer is not available at this time.");

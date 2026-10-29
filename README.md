@@ -14,11 +14,11 @@ Built for **BIT216 Software Engineering Principles** as a three-person team proj
 | Ask for support: submit, edit and cancel requests; browse volunteers | Working |
 | Volunteer: see incoming requests, accept or decline | Working |
 | **Accepting a request books the session** at the time the requester chose; Accept is blocked when the volunteer is not free then | Working |
-| **Schedule a support session by hand** from an accepted request (slot picker, mode, optional meeting link, double-booking protection). Used when auto-booking fails, and the only way to add a meeting link | Working |
-| **My Support Sessions**: upcoming list, soonest first, "Within 24h" highlight, empty/loading/error states | Working |
-| Reschedule, cancel, mark completed, star rating on a session | **Prototype only.** Saved in the browser, not the database |
+| **My Support Sessions**: upcoming list, soonest first, "Within 24h" highlight, empty/loading/error states, and a Past sessions list (completed, cancelled, time passed) | Working |
+| Cancel a session (at least 24 hours before the start; the request is cancelled with it and the other person gets an in-app notice they can dismiss) | Working (needs migrations `20261021000100_session_cancel_feedback.sql`, `20261027000100_cancel_session_24h.sql` and `20261028000100_cancel_notification.sql`) |
+| The volunteer marks a session completed after it starts; the Help Seeker rates it 1 to 5 stars with an optional comment (once, read-only after) | Working (same migrations) |
 | Admin dashboard and user registrations | **Placeholder only** |
-| Session reminder notifications, in-app video | Not built (video is out of scope by design: use a Meet or Zoom link) |
+| Session reminders, email notifications, in-app video | Not built (video is out of scope by design: use a Meet or Zoom link) |
 
 ## Tech stack
 
@@ -33,7 +33,7 @@ Built for **BIT216 Software Engineering Principles** as a three-person team proj
 frontend/            Next.js app
   app/               pages and API routes (app/api/sessions/*)
   components/        UI (sessions/, layout/, dashboard/, auth/, volunteer/)
-  lib/sessions/      sessions logic: slots, schemas, data access, error mapping
+  lib/sessions/      sessions logic: overlap check, schemas, data access, error mapping
   tests/             Vitest unit tests
 backend/supabase/    Supabase CLI project
   migrations/        versioned SQL, applied in filename order
@@ -54,12 +54,12 @@ Open the site (locally `http://localhost:3000`, or the Vercel URL). Sign in with
 **As a volunteer**
 1. Open **My Profile** and switch to **Volunteer**. The first time, go to **Skills & Availability** and save your weekly availability. Sessions can only be booked inside it.
 2. **Incoming Requests** lists Pending requests sent to you. **Accept** books the session at the requested time. It shows **Not available** (disabled) when you are outside your availability or already booked at that time. **Decline** rejects the request.
-3. **My Sessions** shows your upcoming sessions and any accepted request that still has no session (for example if booking failed). Click **Schedule session** to pick a free time, a mode and an optional https meeting link, then **Confirm Support Session**.
+3. **My Sessions** shows your upcoming and past sessions. Open a session to cancel it, or to **Mark as completed** once its time has started.
 
 **Rules to know**
 - Times are one-hour slots in Kuala Lumpur time. A request for a time that is not on the hour is shown as Not available.
 - A person cannot be booked twice at the same time, across all their requests. The message is "That time is no longer available, please pick a different time".
-- A session booked by Accept has no meeting link. To add a link, schedule by hand.
+- A session booked by Accept has no meeting link yet (still to be designed).
 
 ## Running it locally
 
@@ -97,7 +97,7 @@ CL_EMAIL=<test email> CL_PW=<test password> npm run test:e2e      # PowerShell: 
 
 The email and password are read from the environment and never stored in the repo. Screenshots are saved to `frontend/tests/e2e/evidence/` (git-ignored), one file per test case, for the test documents.
 
-**Test data.** The tests use a fake account, "Sessions Test Seeker", and a volunteer test account who is available on Mondays. The cases need: a Pending request for a free time (Monday), a Pending request for a time outside the volunteer's availability (another weekday), and an Accepted request with no session. Accepting a request in TCUC3_8 books real sessions, so **reset the data before every re-run**: delete the test sessions (`delete from public.session where request_id::text like 'b1b2c3d4-000%'`) and set the Pending requests back to Pending. The request dates must stay in the future. A case skips, rather than fails, when its data is missing.
+**Test data.** The tests use a fake account, "Sessions Test Seeker", and a volunteer test account who is available on Mondays. TCUC3_8 needs two Pending requests assigned to the volunteer: "Sessions test: Java help" on a free Monday hour (the spec expects Mon 16 Nov 2026, 11:00 Kuala Lumpur) and "Sessions test: SQL joins" on another weekday (outside the availability). Accepting a request in TCUC3_8 books a real session, so **reset the data before every re-run**: delete that session (`delete from public.session where request_id = 'b1b2c3d4-0006-4000-8000-000000000006'`) and set the request back to Pending. The request dates must stay in the future (change the date in the spec when they pass). A case skips, rather than fails, when its data is missing.
 
 ### Other commands
 
@@ -135,9 +135,12 @@ If someone applied a migration by pasting it into the SQL editor, Supabase will 
 
 ## How sessions work
 
-- A session is created from an **accepted** support request. Normally it is booked automatically when the volunteer clicks Accept, at the time the requester chose. If that fails, the request stays Accepted and either person can schedule it by hand.
-- Offered times come from the volunteer's weekly availability, in **one-hour slots**, read as **Asia/Kuala_Lumpur** time. Everything is stored in UTC.
+- A session is created from an **accepted** support request. Normally it is booked automatically when the volunteer clicks Accept, at the time the requester chose. If that fails, the volunteer sees the reason and the request stays Accepted.
+- Accept is only offered when the requested hour fits inside the volunteer's weekly availability (a session is always **one hour**, read as **Asia/Kuala_Lumpur** time). Everything is stored in UTC.
 - Neither person can be booked at overlapping times, across all their requests. A request can have only one scheduled session at a time.
+- **Cancel:** either person, only while the session is Scheduled and at least **24 hours** before it starts. The request is cancelled with it, and the other person gets a notice (table `notification`) shown at the top of My Support Sessions. No email is sent.
+- **Complete:** only the volunteer, and only once the session has started. This also completes the request.
+- **Feedback:** only the Help Seeker, only on a Completed session, once, and it cannot be edited afterwards.
 - These rules are enforced **in the database** (a trigger plus RLS policies), so they hold even if someone skips the app and talks to Supabase directly. The API turns database errors into clear messages (409 "That time is no longer available, please pick a different time").
 - The sessions API only returns a participant's name and photo, never their email, student ID or phone number.
 
@@ -145,10 +148,10 @@ API routes:
 
 | Route | Purpose |
 |---|---|
-| `POST /api/sessions` | Schedule a session |
-| `GET /api/sessions?status=Scheduled&upcoming=true` | List the signed-in user's sessions |
-| `GET /api/sessions/schedule-context?requestId=` | The accepted request and its free slots |
-| `GET /api/sessions/awaiting` | Accepted requests that still need a time |
+| `POST /api/sessions` | Book a session (called when a volunteer accepts a request) |
+| `GET /api/sessions?status=Scheduled&upcoming=true` | List the signed-in user's upcoming sessions (`?history=true` for past ones, `?id=` for one) |
+| `PATCH /api/sessions` | `{ sessionId, action: "complete" \| "cancel" }` |
+| `POST /api/sessions/feedback` | The Help Seeker's rating and comment, once per session |
 
 All routes expect an `Authorization: Bearer <access token>` header and run every query as that user.
 
@@ -162,8 +165,10 @@ To put the upcoming list on a dashboard, render `<UpcomingSessions />` from `fro
 ## Known issues
 
 - Lint reports about 17 errors, mostly in pages that load data inside effects and a few unescaped apostrophes. They do not affect the build.
-- The session detail page (`/sessions/[id]`) saves reschedule, cancel, complete and rating to browser storage only. They need real database writes and the `feedback` table.
 - Sessions booked by Accept have no meeting link, and In-Person sessions have no venue field. A link or venue step is still to be designed.
+- Cancelling notifies the other person in the app only (no email). The `notification` table was created by hand in production before it had a migration; `20261028000100_cancel_notification.sql` now creates it if missing and locks it down.
+- Two migrations share the version `20261019000100` (`complete_session_request` and `prevent_self_support_requests`), which can make `supabase db push` fail halfway. Agree a rename with their authors before pushing. The session migrations from `20261021000100` on were applied with `supabase db query`, so Supabase's migration history does not list them.
+- The Volunteer List still offers a volunteer to themselves (the database refuses it on submit), and old requests in the Chat mode, which no longer exists, can still be accepted from Incoming Requests.
 - The Accept button lives in Darryl's volunteer dashboard (`components/dashboard/VolunteerRequestList.tsx`) and calls the sessions API to book the session.
 - `npm audit` reports vulnerabilities in dependencies that have not been reviewed yet.
 

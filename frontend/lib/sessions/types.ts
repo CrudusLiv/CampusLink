@@ -1,4 +1,4 @@
-export const SUPPORT_MODES = ['Online', 'In-Person', 'Chat'] as const;
+export const SUPPORT_MODES = ['Online', 'In-Person'] as const; // "Chat / Text only" is not in the user stories
 export type SupportMode = (typeof SUPPORT_MODES)[number];
 
 export type DayOfWeek = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
@@ -10,13 +10,13 @@ export type SessionView = {
   id: string;
   requestId: string;
   requestTitle: string;
+  requestDescription?: string | null; // what the Help Seeker asked for
   scheduledDatetime: string; // ISO, UTC
   supportMode: SupportMode;
   meetingLink: string | null;
   status: 'Scheduled' | 'Completed' | 'Cancelled';
-  rating?: number;
+  rating?: number; // from the feedback table, once the Help Seeker has submitted it
   feedback?: string;
-  rescheduleNote?: string;
   requester: Participant; // Help Seeker
   volunteer: Participant;
   other: Participant; // whichever of the two is NOT the viewer
@@ -28,14 +28,6 @@ export type ScheduleContext = {
   category: string;
   requester: Participant;
   volunteer: Participant;
-};
-
-/** An accepted support request that has no Scheduled session yet: it still needs a time. */
-export type AwaitingRequest = {
-  requestId: string;
-  requestTitle: string;
-  category: string;
-  other: Participant; // the person on the other side of the request
 };
 
 export type AvailabilityRow = { dayOfWeek: DayOfWeek; startTime: string; endTime: string }; // 'HH:MM[:SS]'

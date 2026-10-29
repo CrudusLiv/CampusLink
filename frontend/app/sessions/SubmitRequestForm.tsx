@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { SUBJECTS } from "@/lib/categories";
 import { ASK_SUPPORT_DRAFT_KEY } from "@/lib/askSupportDraft";
 import { klDateKey, TZ } from "@/lib/sessions/time";
@@ -46,7 +46,9 @@ const EMPTY_FORM_VALUES: FormInitialValues = {
   volunteerChoice: "none", chosenVolunteer: null,
 };
 
-function createInitialValuesSnapshot() {
+// `search` comes from Next's router (useSearchParams), not window.location: during a client-side navigation
+// (e.g. back from the volunteer list) the address bar is not updated yet while this page first renders.
+function createInitialValuesSnapshot(search: string) {
   if (typeof window === "undefined") return "";
   let initial: FormInitialValues = { ...EMPTY_FORM_VALUES };
   try {
@@ -56,7 +58,7 @@ function createInitialValuesSnapshot() {
     try { sessionStorage.removeItem(ASK_SUPPORT_DRAFT_KEY); } catch { /* Storage may be unavailable. */ }
   }
 
-  const params = new URLSearchParams(window.location.search);
+  const params = new URLSearchParams(search);
   const category = params.get("category");
   if (category && SUBJECTS.includes(category as (typeof SUBJECTS)[number])) initial.selectedCategory = category;
   if (params.get("date")) initial.date = params.get("date")!;
@@ -123,11 +125,12 @@ function isWithinSlot(time: string, start: string, end: string) {
 
 export function SubmitRequestForm(props: { mode?: FormMode; request?: ExistingSupportRequest }) {
   const mode = props.mode ?? "create";
-  const snapshotRef = useRef<string | null>(null);
+  const search = useSearchParams().toString();
+  const snapshotRef = useRef<{ search: string; value: string } | null>(null);
   const getSnapshot = useCallback(() => {
-    if (snapshotRef.current === null) snapshotRef.current = createInitialValuesSnapshot();
-    return snapshotRef.current;
-  }, []);
+    if (snapshotRef.current?.search !== search) snapshotRef.current = { search, value: createInitialValuesSnapshot(search) };
+    return snapshotRef.current.value;
+  }, [search]);
   const subscribe = useCallback((onChange: () => void) => {
     const handlePopState = () => {
       snapshotRef.current = null;
