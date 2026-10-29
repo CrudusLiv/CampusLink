@@ -14,6 +14,8 @@ import { useEffect, useState, FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import AuthLayout from "@/components/auth/AuthLayout";
+import { passwordRules } from "@/lib/passwordRules";
 import styles from "../register/register.module.css";
 
 type Status = "checking" | "confirm" | "ready" | "invalid" | "done";
@@ -105,88 +107,89 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <Link href="/" className={styles.logo}>
-          CampusLink
-        </Link>
-      </header>
+    <AuthLayout>
+      <h1 className={styles.title}>Set a new password</h1>
 
-      <main className={styles.main}>
-        <div className={styles.card}>
-          <h1 className={styles.title}>Set a new password</h1>
+      {status === "checking" && <p className={styles.subtitle}>Checking your reset link...</p>}
 
-          {status === "checking" && <p className={styles.subtitle}>Checking your reset link...</p>}
+      {status === "confirm" && (
+        <>
+          <p className={styles.subtitle}>Press continue to choose a new password for your account.</p>
+          <button
+            type="button"
+            onClick={handleContinue}
+            className={styles.submit}
+            style={{ width: "100%" }}
+            disabled={verifying}
+          >
+            {verifying ? "Checking link..." : "Continue"}
+          </button>
+        </>
+      )}
 
-          {status === "confirm" && (
-            <>
-              <p className={styles.subtitle}>Press continue to choose a new password for your account.</p>
-              <button type="button" onClick={handleContinue} className={styles.submit} disabled={verifying}>
-                {verifying ? "Checking link..." : "Continue"}
-              </button>
-            </>
-          )}
+      {status === "invalid" && (
+        <>
+          <p className={styles.serverError}>This reset link is invalid or has expired.</p>
+          <p className={styles.switch}>
+            <Link href="/forgot-password">Request a new reset link</Link>
+          </p>
+        </>
+      )}
 
-          {status === "invalid" && (
-            <>
-              <p className={styles.serverError}>This reset link is invalid or has expired.</p>
-              <p className={styles.switch}>
-                <Link href="/forgot-password">Request a new reset link</Link>
-              </p>
-            </>
-          )}
+      {status === "done" && (
+        <p className={styles.success}>
+          Password updated. You&apos;ve been logged out everywhere. Taking you to the login page...
+        </p>
+      )}
 
-          {status === "done" && (
-            <p className={styles.success}>
-              Password updated. You&apos;ve been logged out everywhere. Taking you to the login page...
-            </p>
-          )}
+      {status === "ready" && (
+        <>
+          <p className={styles.subtitle}>Use at least 8 characters with 1 uppercase letter and 1 number.</p>
 
-          {status === "ready" && (
-            <>
-              <p className={styles.subtitle}>
-                Use at least 8 characters with 1 uppercase letter and 1 number.
-              </p>
+          {serverError && <p className={styles.serverError}>{serverError}</p>}
 
-              {serverError && <p className={styles.serverError}>{serverError}</p>}
+          <form onSubmit={handleSubmit} noValidate className={styles.form}>
+            <div className={styles.field}>
+              <label htmlFor="new-password" className={styles.label}>
+                New password
+              </label>
+              <input
+                id="new-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={errors.password ? `${styles.input} ${styles.inputError}` : styles.input}
+              />
+              <ul className={styles.checklist} aria-label="Password rules">
+                {passwordRules(password).map((rule) => (
+                  <li key={rule.text} className={rule.ok ? styles.checkOk : styles.checkTodo}>
+                    {rule.text}
+                  </li>
+                ))}
+              </ul>
+              {errors.password && <p className={styles.error}>{errors.password}</p>}
+            </div>
 
-              <form onSubmit={handleSubmit} noValidate className={styles.form}>
-                <div className={styles.field}>
-                  <label htmlFor="new-password" className={styles.label}>
-                    New password
-                  </label>
-                  <input
-                    id="new-password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className={errors.password ? `${styles.input} ${styles.inputError}` : styles.input}
-                  />
-                  {errors.password && <p className={styles.error}>{errors.password}</p>}
-                </div>
+            <div className={styles.field}>
+              <label htmlFor="confirm-password" className={styles.label}>
+                Confirm new password
+              </label>
+              <input
+                id="confirm-password"
+                type="password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                className={errors.confirm ? `${styles.input} ${styles.inputError}` : styles.input}
+              />
+              {errors.confirm && <p className={styles.error}>{errors.confirm}</p>}
+            </div>
 
-                <div className={styles.field}>
-                  <label htmlFor="confirm-password" className={styles.label}>
-                    Confirm new password
-                  </label>
-                  <input
-                    id="confirm-password"
-                    type="password"
-                    value={confirm}
-                    onChange={(e) => setConfirm(e.target.value)}
-                    className={errors.confirm ? `${styles.input} ${styles.inputError}` : styles.input}
-                  />
-                  {errors.confirm && <p className={styles.error}>{errors.confirm}</p>}
-                </div>
-
-                <button type="submit" className={styles.submit} disabled={saving}>
-                  {saving ? "Saving..." : "Update password"}
-                </button>
-              </form>
-            </>
-          )}
-        </div>
-      </main>
-    </div>
+            <button type="submit" className={styles.submit} disabled={saving}>
+              {saving ? "Saving..." : "Update password"}
+            </button>
+          </form>
+        </>
+      )}
+    </AuthLayout>
   );
 }
