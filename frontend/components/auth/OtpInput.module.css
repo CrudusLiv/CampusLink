@@ -1,55 +1,57 @@
 .row {
   display: flex;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 0.625rem;
 }
 
 .cell {
-  width: 2.75rem;
-  height: 3.25rem;
+  width: 3.25rem;
+  height: 3.75rem;
   text-align: center;
-  font-size: 1.375rem;
-  font-weight: 700;
+  font-size: 1.5rem;
+  font-weight: 600;
   font-family: inherit;
-  color: #111827;
-  background-color: #ffffff;
-  border: 1px solid #d4d4d8;
-  border-radius: 6px;
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 16px;
 }
 
 .cell:focus {
-  outline: 2px solid #111827;
-  outline-offset: 1px;
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
 }
 
 .cell:disabled {
-  background-color: #f4f4f5;
-  color: #9ca3af;
+  background-color: rgba(255, 255, 255, 0.04);
+  color: #8c8880;
 }
 
 .cellError {
-  border-color: #dc2626;
+  border-color: #ffb4a6;
 }
 
 /* Used by the login page's code step */
 .timer {
   margin: 1rem 0 0 0;
   text-align: center;
-  font-size: 0.875rem;
-  color: #4b5563;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #f6ddba;
 }
 
 .timerExpired {
   margin: 1rem 0 0 0;
   text-align: center;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 600;
-  color: #dc2626;
+  color: #ffd2c9;
 }
 
 .secondaryRow {
   display: flex;
   justify-content: space-between;
+  gap: 0.75rem;
   margin-top: 1rem;
   font-size: 0.8125rem;
 }
@@ -61,21 +63,21 @@
   font-family: inherit;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #111827;
+  color: #cfe3f5;
   text-decoration: underline;
   cursor: pointer;
 }
 
 .linkButton:disabled {
-  color: #9ca3af;
+  color: #8c8880;
   text-decoration: none;
   cursor: not-allowed;
 }
 
 @media (max-width: 400px) {
   .cell {
-    width: 2.25rem;
-    height: 2.75rem;
-    font-size: 1.125rem;
+    width: 2.5rem;
+    height: 3rem;
+    font-size: 1.25rem;
   }
 }
