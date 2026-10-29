@@ -1,0 +1,71 @@
+/*
+ * CampusLink design tokens. Every colour, size and spacing in the app should come from here, so the whole app
+ * can be restyled in one place. Light theme only (a dark theme caused a black flash while pages load).
+ * The brand colours come from the HELP University logo: red and black on white.
+ */
+:root {
+  /* Brand */
+  --brand-red: #c8102e;          /* text, links, white-on-red buttons: 5.9:1 on white (the logo red itself is 4.6:1) */
+  --brand-red-strong: #a50d26;   /* hover and pressed */
+  --brand-red-tint: #fdecee;     /* light background behind red text or icons */
+  --brand-red-logo: #e61e2a;     /* the exact logo red: large shapes only, never small text */
+  --ink: #111111;                /* near-black from the logo: headings, primary buttons */
+
+  /* Text */
+  --text: #171717;
+  --text-2: #3f3f46;             /* secondary text */
+  --text-3: #52525b;             /* hints and labels */
+  --text-muted: #71717a;         /* least important text (4.8:1 on white) */
+  --text-on-ink: #ffffff;
+
+  /* Surfaces and lines */
+  --surface: #ffffff;
+  --surface-2: #f9fafb;          /* page background */
+  --surface-3: #f4f4f5;          /* quiet panels, hover rows */
+  --line: #e4e4e7;
+  --line-strong: #d4d4d8;
+
+  /* Status (always paired with text or an icon, never colour alone) */
+  --success: #166534;
+  --success-bg: #dcfce7;
+  --warning: #92400e;
+  --warning-bg: #fef3c7;
+  --danger: #b42318;
+  --danger-bg: #fef2f2;
+  --danger-line: #fca5a5;
+
+  /* Keyboard focus: blue, so it never looks like a brand or error colour */
+  --focus: #1d4ed8;
+
+  /* Student and Volunteer modes: the accent changes with the mode */
+  --mode-student: var(--brand-red);
+  --mode-volunteer: var(--ink);
+  --mode-admin: #3f3f46;
+  --mode-accent: var(--mode-student);
+
+  /* Spacing (4px scale) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+
+  /* Shape and depth */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-pill: 9999px;
+  --shadow-sm: 0 1px 2px rgba(17, 17, 17, 0.06);
+
+  /* Type scale (Geist, set in the root layout) */
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+
+  /* Layout */
+  --sidebar-width: 260px;
+}
