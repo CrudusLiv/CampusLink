@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/lib/useCurrentUser";
@@ -22,7 +23,6 @@ export default function SupportHistoryTable() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [savingRatingId, setSavingRatingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!profile) return;
@@ -64,26 +64,6 @@ export default function SupportHistoryTable() {
       return matchesStatus && matchesSearch;
     });
   }, [rows, search, statusFilter]);
-
-  async function saveRating(row: StudentHistoryRow, rating: number) {
-    if (!profile || savingRatingId) return;
-    setSavingRatingId(row.id);
-    setError("");
-    const { data, error: saveError } = await supabase
-      .from("support_request")
-      .update({ rating })
-      .eq("request_id", row.id)
-      .eq("requester_id", profile.user_id)
-      .eq("status", "Completed")
-      .select("request_id")
-      .maybeSingle();
-    setSavingRatingId(null);
-    if (saveError || !data) {
-      setError("We couldn't save your rating. Make sure the support history migration has been applied.");
-      return;
-    }
-    setRows((current) => current.map((item) => item.id === row.id ? { ...item, rating } : item));
-  }
 
   return (
     <main className={styles.content}>
@@ -130,12 +110,8 @@ export default function SupportHistoryTable() {
                     <span className={styles.ratingStars} aria-label={`Your rating: ${row.rating} out of 5`}>
                       {Array.from({ length: 5 }, (_, index) => index < row.rating! ? "★" : "☆").join("")}
                     </span>
-                  ) : row.status === "Completed" ? (
-                    <span className={styles.ratingPicker} role="group" aria-label={`Rate ${row.title}`}>
-                      {[1, 2, 3, 4, 5].map((value) => <button key={value} type="button" aria-label={`${value} star${value === 1 ? "" : "s"}`} disabled={savingRatingId !== null} onClick={() => saveRating(row, value)}>
-                        {savingRatingId === row.id ? "…" : "☆"}
-                      </button>)}
-                    </span>
+                  ) : row.status === "Completed" && row.session_id ? (
+                    <Link className={styles.rateLink} href={`/sessions/${row.session_id}`}>Rate this session</Link>
                   ) : <span aria-label="No rating">—</span>}
                 </td>
                 <td><RequestStatusBadge status={row.status} /></td>
@@ -144,7 +120,7 @@ export default function SupportHistoryTable() {
           </table>
         </div>
       )}
-      <p className={styles.ratingNote}>Ratings will appear here when session feedback is available.</p>
+      <p className={styles.ratingNote}>You can rate a completed session once, from its session page. Ratings cannot be changed afterwards.</p>
     </main>
   );
 }

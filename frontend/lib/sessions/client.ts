@@ -62,6 +62,10 @@ export const completeSession = (sessionId: string) => api('/api/sessions', { met
 
 export const cancelSession = (sessionId: string) => api('/api/sessions', { method: 'PATCH', body: { sessionId, action: 'cancel' } }).then(toResult);
 
+/** Volunteer: where / how to join (a link or a place), optionally kept as the default for future sessions. */
+export const saveJoinDetails = (sessionId: string, details: string, saveAsDefault: boolean) =>
+  api('/api/sessions/join-details', { method: 'PATCH', body: { sessionId, details, saveAsDefault } }).then(toResult);
+
 /** Help Seeker's feedback: one per session, read-only afterwards. */
 export const sendFeedback = (sessionId: string, rating: number, comment: string) =>
   api('/api/sessions/feedback', { method: 'POST', body: { sessionId, rating, comment: comment.trim() || undefined } }).then(toResult);

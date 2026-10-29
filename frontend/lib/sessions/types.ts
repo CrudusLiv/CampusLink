@@ -14,6 +14,7 @@ export type SessionView = {
   scheduledDatetime: string; // ISO, UTC
   supportMode: SupportMode;
   meetingLink: string | null;
+  joinDetails: string | null; // where / how to join: a meeting link (Online) or a place (In-Person), set by the volunteer
   status: 'Scheduled' | 'Completed' | 'Cancelled';
   rating?: number; // from the feedback table, once the Help Seeker has submitted it
   feedback?: string;

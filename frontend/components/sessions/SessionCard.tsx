@@ -1,3 +1,4 @@
+import { joinUrl } from '@/lib/sessions/join';
 import { formatDateTime, hasEnded, isWithin24h } from '@/lib/sessions/time';
 import Link from 'next/link';
 import type { SessionView } from '@/lib/sessions/types';
@@ -19,8 +20,8 @@ export function SessionCard({ session, now }: { session: SessionView; now?: numb
           <p className={s.cardWith}>With {session.other.name}</p>
         </div>
       </Link>
-      {session.status === 'Scheduled' && session.supportMode === 'Online' && session.meetingLink && (
-        <a className={s.link} href={session.meetingLink} target="_blank" rel="noopener noreferrer">Join meeting</a>
+      {session.status === 'Scheduled' && joinUrl(session) && (
+        <a className={s.link} href={joinUrl(session) ?? undefined} target="_blank" rel="noopener noreferrer">Join meeting</a>
       )}
       {soon && <span className={s.badgeSoon}>Within 24h</span>}
       {session.status !== 'Scheduled' && (

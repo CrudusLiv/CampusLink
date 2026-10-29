@@ -57,3 +57,5 @@
 
 @media (min-width: 768px) { .content { padding-top: 2rem; } .actions { grid-template-columns: 1fr 1fr; align-items: start; } .confirmBox { grid-column: 1 / -1; } }
 @media (max-width: 440px) { .summary { flex-wrap: wrap; } }
+.joinForm { display: grid; gap: 0.5rem; margin-top: 1rem; }
+.checkRow { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9375rem; color: #3f3f46; }

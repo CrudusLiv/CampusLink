@@ -31,6 +31,13 @@ export const feedbackSchema = z.object({
 
 export type FeedbackInput = z.infer<typeof feedbackSchema>;
 
+/** PATCH /api/sessions/join-details: the volunteer's meeting link or place; empty clears it. */
+export const joinDetailsSchema = z.object({
+  sessionId: z.uuid('Missing or invalid session'),
+  details: z.string().trim().max(300, 'Keep it under 300 characters'),
+  saveAsDefault: z.boolean().optional().default(false),
+});
+
 /** GET /api/sessions?status=Scheduled&upcoming=true, ?history=true (Completed + Cancelled, newest first) or ?id= */
 export const listQuerySchema = z.object({
   status: z.enum(['Scheduled', 'Completed', 'Cancelled']).optional(),

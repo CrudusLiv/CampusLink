@@ -17,6 +17,9 @@ Built for **BIT216 Software Engineering Principles** as a three-person team proj
 | **My Support Sessions**: upcoming list, soonest first, "Within 24h" highlight, empty/loading/error states, and a Past sessions list (completed, cancelled, time passed) | Working |
 | Cancel a session (at least 24 hours before the start; the request is cancelled with it and the other person gets an in-app notice they can dismiss) | Working (needs migrations `20261021000100_session_cancel_feedback.sql`, `20261027000100_cancel_session_24h.sql` and `20261028000100_cancel_notification.sql`) |
 | The volunteer marks a session completed after it starts; the Help Seeker rates it 1 to 5 stars with an optional comment (once, read-only after) | Working (same migrations) |
+| The volunteer saves where or how to join a session (a meeting link or a place) on the session page, and can keep it as the default for future bookings; the Help Seeker sees it | Working (needs migration `20261029000200_session_join_details.sql`) |
+| Support History shows the rating the Help Seeker gave (read from the session feedback) and links to the rating form when there is none | Working |
+| A volunteer's public profile shows their average rating and up to five recent comments, without names | Working (needs migration `20261029000100_volunteer_rating_summary.sql`) |
 | Admin dashboard and user registrations | **Placeholder only** |
 | Session reminders, email notifications, in-app video | Not built (video is out of scope by design: use a Meet or Zoom link) |
 
@@ -165,7 +168,7 @@ To put the upcoming list on a dashboard, render `<UpcomingSessions />` from `fro
 ## Known issues
 
 - Lint reports about 17 errors, mostly in pages that load data inside effects and a few unescaped apostrophes. They do not affect the build.
-- Sessions booked by Accept have no meeting link, and In-Person sessions have no venue field. A link or venue step is still to be designed.
+- "Where or how to join" is set per session by the volunteer (or copied from their saved default when the session is booked). There is no field for it on the Skills & Availability page yet.
 - Cancelling notifies the other person in the app only (no email). The `notification` table was created by hand in production before it had a migration; `20261028000100_cancel_notification.sql` now creates it if missing and locks it down.
 - Two migrations share the version `20261019000100` (`complete_session_request` and `prevent_self_support_requests`), which can make `supabase db push` fail halfway. Agree a rename with their authors before pushing. The session migrations from `20261021000100` on were applied with `supabase db query`, so Supabase's migration history does not list them.
 - The Volunteer List still offers a volunteer to themselves (the database refuses it on submit), and old requests in the Chat mode, which no longer exists, can still be accepted from Incoming Requests.

@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { Avatar } from "@/components/sessions/Avatar";
-import { cancelSession, completeSession, fetchSession, sendFeedback } from "@/lib/sessions/client";
+import { cancelSession, completeSession, fetchSession, saveJoinDetails, sendFeedback } from "@/lib/sessions/client";
+import { joinText, joinUrl } from "@/lib/sessions/join";
 import { formatDate, formatRange } from "@/lib/sessions/time";
 import type { SessionView } from "@/lib/sessions/types";
 import styles from "./session-detail.module.css";
@@ -51,6 +52,12 @@ export default function SessionDetail({ sessionId }: { sessionId: string }) {
     setBusy(false);
   }
 
+  function saveDetails(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    void run(() => saveJoinDetails(sessionId, String(form.get("details") ?? ""), form.get("saveDefault") === "on"), "Saved. The Help Seeker can see this now.");
+  }
+
   function submitFeedback(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (rating < 1) {
@@ -74,6 +81,8 @@ export default function SessionDetail({ sessionId }: { sessionId: string }) {
   const started = new Date(iso).getTime() <= now;
   const tooLateToCancel = new Date(iso).getTime() - now < 24 * 60 * 60 * 1000;
   const hasFeedback = session.rating !== undefined;
+  const joinLink = joinUrl(session);
+  const joinPlace = joinText(session);
 
   return (
     <main className={styles.content}>
@@ -92,8 +101,24 @@ export default function SessionDetail({ sessionId }: { sessionId: string }) {
           <div><dt>When</dt><dd><time dateTime={iso}>{formatDate(iso)}, {formatRange(iso)}</time> (1 hour)</dd></div>
           <div><dt>How</dt><dd>{session.supportMode}</dd></div>
           {session.requestDescription && <div><dt>Request</dt><dd className={styles.description}>{session.requestDescription}</dd></div>}
-          {session.meetingLink && <div><dt>Link</dt><dd><a className={styles.meetingLink} href={session.meetingLink} target="_blank" rel="noopener noreferrer">Open meeting link</a></dd></div>}
+          <div>
+            <dt>Join</dt>
+            <dd>
+              {joinLink && <a className={styles.meetingLink} href={joinLink} target="_blank" rel="noopener noreferrer">Open meeting link</a>}
+              {joinPlace && <span className={styles.description}>{joinPlace}</span>}
+              {!joinLink && !joinPlace && <span className={styles.hint}>{isVolunteer ? "Not added yet. Add it below so the Help Seeker knows where to join." : "The volunteer has not added this yet."}</span>}
+            </dd>
+          </div>
         </dl>
+
+        {isVolunteer && session.status === "Scheduled" && (
+          <form key={session.joinDetails ?? "none"} className={styles.joinForm} onSubmit={saveDetails}>
+            <label className={styles.label} htmlFor="join-details">Where or how to join ({session.supportMode === "Online" ? "a meeting link" : "a place"})</label>
+            <input id="join-details" name="details" className={styles.input} type="text" maxLength={300} defaultValue={session.joinDetails ?? ""} placeholder={session.supportMode === "Online" ? "https://meet.google.com/..." : "Library, level 2, study room 3"} />
+            <label className={styles.checkRow}><input type="checkbox" name="saveDefault" /> Use this for my future sessions</label>
+            <button className={styles.secondaryButton} type="submit" disabled={busy}>Save</button>
+          </form>
+        )}
 
         {message && <p className={styles.success} role="status">{message}</p>}
         {error && <p className={styles.error} role="alert">{error}</p>}

@@ -11,10 +11,11 @@ type SessionRow = {
   support_mode: SessionView['supportMode'];
   status: SessionView['status'];
   meeting_link: string | null;
+  join_details: string | null;
 };
 type RequestRow = { title: string; description: string | null; requester_id: string; volunteer_id: string };
 
-const COLS = 'session_id,request_id,scheduled_datetime,support_mode,status,meeting_link';
+const COLS = 'session_id,request_id,scheduled_datetime,support_mode,status,meeting_link,join_details';
 
 /**
  * The viewer's sessions, soonest first. `upcoming` keeps only those starting from now on;
@@ -85,6 +86,19 @@ export async function cancelSession(db: Db, sessionId: string): Promise<RpcResul
   return mapRpc(await db.rpc('cancel_session', { p_session_id: sessionId }), 'cancel');
 }
 
+/** The volunteer's "where / how to join" for one session; optionally saved as their default for future bookings. */
+export async function setJoinDetails(db: Db, sessionId: string, details: string, saveAsDefault: boolean): Promise<RpcResult> {
+  const { error } = await db.rpc('set_session_join_details', { p_session_id: sessionId, p_details: details, p_save_default: saveAsDefault });
+  if (!error) return { ok: true };
+  const message = error.message ?? '';
+  const fail = (status: number, code: string, text: string): RpcResult => ({ ok: false, error: { status, error: code, message: text } });
+  if (/SESSION_NOT_FOUND/.test(message)) return fail(404, 'not_found', 'Session not found');
+  if (/NOT_VOLUNTEER/.test(message) || error.code === '42501') return fail(403, 'forbidden', 'Only the volunteer can change where to join');
+  if (/SESSION_NOT_SCHEDULED/.test(message)) return fail(409, 'invalid_status', 'Only a scheduled session can be changed');
+  if (/DETAILS_TOO_LONG/.test(message)) return fail(400, 'validation', 'Keep it under 300 characters');
+  return fail(500, 'unknown', 'Something went wrong. Please try again.');
+}
+
 function mapRpc({ error }: { error: { message?: string; code?: string } | null }, verb: 'complete' | 'cancel'): RpcResult {
   if (!error) return { ok: true };
   const message = error.message ?? '';
@@ -138,6 +152,7 @@ function toView(
     scheduledDatetime: new Date(r.scheduled_datetime).toISOString(),
     supportMode: r.support_mode,
     meetingLink: r.meeting_link,
+    joinDetails: r.join_details,
     status: r.status,
     requester,
     volunteer,

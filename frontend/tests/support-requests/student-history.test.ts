@@ -46,11 +46,37 @@ describe("TCUC2_38 loads the student's support request history", () => {
       error: null,
     });
 
+    const emptyQuery = makeQuery({ data: [], error: null });
     db = {
       from: vi.fn((table: string) =>
-        table === "support_request" ? requestQuery : volunteerQuery,
+        table === "support_request" ? requestQuery : table === "users" ? volunteerQuery : emptyQuery,
       ),
     } as unknown as Parameters<typeof loadStudentSupportHistory>[0];
+  });
+
+  it("shows the rating from the session feedback, and links the session when it is not rated yet", async () => {
+    const SESSION_ID = "a1b2c3d4-0004-4000-8000-000000000004";
+    const feedbackDb = {
+      from: vi.fn((table: string) => {
+        if (table === "support_request") return requestQuery;
+        if (table === "users") return volunteerQuery;
+        if (table === "session") return makeQuery({ data: [{ session_id: SESSION_ID, request_id: REQUEST_ID }], error: null });
+        return makeQuery({ data: [{ session_id: SESSION_ID, rating: 4 }], error: null });
+      }),
+    } as unknown as Parameters<typeof loadStudentSupportHistory>[0];
+    const rated = await loadStudentSupportHistory(feedbackDb, STUDENT_ID);
+    expect(rated.rows[0]).toMatchObject({ session_id: SESSION_ID, rating: 4 });
+
+    const unratedDb = {
+      from: vi.fn((table: string) => {
+        if (table === "support_request") return requestQuery;
+        if (table === "users") return volunteerQuery;
+        if (table === "session") return makeQuery({ data: [{ session_id: SESSION_ID, request_id: REQUEST_ID }], error: null });
+        return makeQuery({ data: [], error: null });
+      }),
+    } as unknown as Parameters<typeof loadStudentSupportHistory>[0];
+    const unrated = await loadStudentSupportHistory(unratedDb, STUDENT_ID);
+    expect(unrated.rows[0]).toMatchObject({ session_id: SESSION_ID, rating: null });
   });
 
   it("loads the student's records and joins the volunteer name", async () => {
@@ -73,6 +99,7 @@ describe("TCUC2_38 loads the student's support request history", () => {
       volunteer_name: "Test Volunteer",
       status: "Completed",
       rating: null,
+      session_id: null,
     }]);
   });
 

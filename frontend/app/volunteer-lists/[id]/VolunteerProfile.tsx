@@ -16,12 +16,14 @@ type Profile = {
 };
 
 type Slot = { day_of_week: string; start_time: string; end_time: string };
+type RatingSummary = { average: number | null; count: number; recent: { rating: number; comment: string }[] };
 
 export default function VolunteerProfile({ userId }: { userId: string }) {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [skills, setSkills] = useState<string[]>([]);
   const [availability, setAvailability] = useState<Slot[]>([]);
+  const [ratings, setRatings] = useState<RatingSummary | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -36,12 +38,13 @@ export default function VolunteerProfile({ userId }: { userId: string }) {
     let cancelled = false;
 
     async function load() {
-      const [{ data: authData }, { data: person, error: profileError }, { data: volunteer, error: volunteerError }, { data: slots, error: slotsError }] =
+      const [{ data: authData }, { data: person, error: profileError }, { data: volunteer, error: volunteerError }, { data: slots, error: slotsError }, { data: summary }] =
         await Promise.all([
           supabase.auth.getUser(),
           supabase.from("users").select("user_id, name, photo_url, faculty, bio").eq("user_id", userId).maybeSingle(),
           supabase.from("volunteer_profile").select("skills, is_volunteer").eq("user_id", userId).maybeSingle(),
           supabase.from("availability").select("day_of_week, start_time, end_time").eq("user_id", userId),
+          supabase.rpc("volunteer_rating_summary", { p_volunteer_id: userId }),
         ]);
 
       if (cancelled) return;
@@ -52,6 +55,7 @@ export default function VolunteerProfile({ userId }: { userId: string }) {
         setProfile(person as Profile);
         setSkills(volunteer.skills ?? []);
         setAvailability(slots ?? []);
+        setRatings((summary ?? null) as RatingSummary | null);
       }
       setLoading(false);
     }
@@ -107,8 +111,25 @@ export default function VolunteerProfile({ userId }: { userId: string }) {
           </section>
 
           <section className={styles.section}>
-            <h2>Recent feedback</h2>
-            <div className={styles.emptyFeedback}>No feedback yet.</div>
+            <h2>Ratings and feedback</h2>
+            {ratings && ratings.count > 0 ? (
+              <div className={styles.feedbackBox}>
+                <p className={styles.ratingSummary}>
+                  <span className={styles.ratingStars} role="img" aria-label={`Average rating ${ratings.average} out of 5`}>★</span>
+                  <strong>{ratings.average}</strong> out of 5 · {ratings.count} {ratings.count === 1 ? "rating" : "ratings"}
+                </p>
+                {ratings.recent.length > 0 && (
+                  <ul className={styles.feedbackList}>
+                    {ratings.recent.map((item, index) => (
+                      <li key={index}>
+                        <span className={styles.ratingStars} role="img" aria-label={`${item.rating} out of 5 stars`}>{"★".repeat(item.rating)}{"☆".repeat(5 - item.rating)}</span>
+                        <p>{item.comment}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : <div className={styles.emptyFeedback}>No feedback yet.</div>}
           </section>
         </section>
 
