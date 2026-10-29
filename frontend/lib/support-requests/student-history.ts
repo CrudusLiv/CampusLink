@@ -12,14 +12,33 @@ export type StudentHistoryRow = {
   volunteer_id: string | null;
   volunteer_name: string | null;
   status: SupportRequestStatus;
+  /** The Help Seeker's rating from the session feedback (one per session), or null if not rated yet. */
   rating: number | null;
+  /** The session that belongs to this request, if one was booked; used to link to the rating form. */
+  session_id: string | null;
 };
 
-type RequestRow = Omit<StudentHistoryRow, "id" | "volunteer_name" | "rating"> & {
+type RequestRow = Omit<StudentHistoryRow, "id" | "volunteer_name" | "rating" | "session_id"> & {
   request_id: string;
 };
 
 type VolunteerRow = { user_id: string; name: string };
+
+/** Looks up the session and the one feedback rating for each completed request. A failed lookup just shows no rating. */
+async function loadSessionRatings(db: typeof supabase, requestIds: string[]) {
+  const found = new Map<string, { sessionId: string; rating: number | null }>();
+  if (requestIds.length === 0) return found;
+
+  const { data: sessions } = await db.from("session").select("session_id, request_id").in("request_id", requestIds);
+  const sessionRows = (sessions ?? []) as unknown as { session_id: string; request_id: string }[];
+  if (sessionRows.length === 0) return found;
+
+  const { data: feedback } = await db.from("feedback").select("session_id, rating").in("session_id", sessionRows.map((row) => row.session_id));
+  const ratings = new Map(((feedback ?? []) as unknown as { session_id: string; rating: number }[]).map((row) => [row.session_id, Number(row.rating)]));
+
+  for (const row of sessionRows) found.set(row.request_id, { sessionId: row.session_id, rating: ratings.get(row.session_id) ?? null });
+  return found;
+}
 
 export async function loadStudentSupportHistory(
   db: typeof supabase,
@@ -53,6 +72,11 @@ export async function loadStudentSupportHistory(
     ]),
   );
 
+  const sessions = await loadSessionRatings(
+    db,
+    requests.filter((row) => row.status === "Completed").map((row) => row.request_id),
+  );
+
   return {
     rows: requests.map((row) => ({
       id: row.request_id,
@@ -62,7 +86,8 @@ export async function loadStudentSupportHistory(
       volunteer_id: row.volunteer_id,
       volunteer_name: row.volunteer_id ? names.get(row.volunteer_id) ?? null : null,
       status: row.status,
-      rating: null,
+      rating: sessions.get(row.request_id)?.rating ?? null,
+      session_id: sessions.get(row.request_id)?.sessionId ?? null,
     })),
     error: null,
   };

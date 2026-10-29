@@ -15,11 +15,8 @@
 .table tbody tr:last-child td { border-bottom: 0; }
 .sessionTitle { min-width: 180px; color: #111827 !important; font-weight: 600; }
 .ratingStars { white-space: nowrap; color: #374151; letter-spacing: 0.08em; }
-.ratingPicker { display: inline-flex; gap: 0.05rem; white-space: nowrap; }
-.ratingPicker button { padding: 0 0.05rem; border: 0; background: transparent; color: #374151; font: inherit; font-size: 1rem; cursor: pointer; }
-.ratingPicker button:hover { color: #111827; transform: scale(1.15); }
-.ratingPicker button:disabled { cursor: wait; opacity: 0.55; }
-.ratingPicker button:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.rateLink { color: #1d4ed8; font-size: 0.875rem; font-weight: 600; white-space: nowrap; }
+.rateLink:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
 .message, .error { margin-top: 1rem; padding: 1rem 1.25rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; background: #fff; color: #52525b; font-size: 0.875rem; }
 .error { border-color: #fca5a5; background: #fef2f2; color: #991b1b; }
 .ratingNote { margin: 0.75rem 0 0; color: #6b7280; font-size: 0.75rem; }
