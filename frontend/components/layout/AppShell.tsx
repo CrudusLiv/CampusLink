@@ -4,6 +4,7 @@
 // Role comes from the signed-in user's row in public.users (no manual toggle).
 // Items without an href are pages that don't exist yet: shown greyed out, not clickable.
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ReactNode } from "react";
@@ -56,6 +57,8 @@ export default function AppShell({ title, children }: { title: string; children:
   const pathname = usePathname();
   const admin = profile?.role === "admin";
   const volunteer = !admin && view === "volunteer";
+  const mode = admin ? "admin" : volunteer ? "volunteer" : "student";
+  const modeLabel = admin ? "Admin" : volunteer ? "Volunteer" : "Student";
   const navItems = admin ? ADMIN_NAV : volunteer ? VOLUNTEER_NAV : STUDENT_NAV;
   const tabItems = admin ? ADMIN_TABS : volunteer ? VOLUNTEER_TABS : STUDENT_TABS;
   const isActive = (href?: string) =>
@@ -85,13 +88,13 @@ export default function AppShell({ title, children }: { title: string; children:
   }
 
   return (
-    <div className={styles.layout}>
+    <div className={styles.layout} data-mode={mode}>
       <aside className={styles.sidebar}>
-        <Link href="/dashboard" className={styles.logo}>
-          <span className={styles.logoIcon} aria-hidden="true" />
-          CampusLink
+        <Link href="/dashboard" className={styles.brand} aria-label="CampusLink home">
+          <Image className={styles.brandLogo} src="/help-logo.png" alt="HELP University" width={200} height={200} priority />
+          <span className={styles.brandName}>CampusLink</span>
         </Link>
-        <div className={styles.section}>{admin ? "Admin" : volunteer ? "Volunteer" : "Student"}</div>
+        <div className={`${styles.modePill} ${styles.section}`}>{modeLabel}</div>
         <nav className={styles.nav} aria-label="Main">
           {navItems.map((i) => renderItem(i, styles.navItem, styles.navItemActive))}
         </nav>
@@ -99,9 +102,11 @@ export default function AppShell({ title, children }: { title: string; children:
       </aside>
 
       <div className={styles.main}>
+        <div className={styles.modeStrip} aria-hidden="true" />
         <header className={styles.header}>
           <h1 className={styles.title}>{title}</h1>
           <div className={styles.user}>
+            <span className={styles.modePill}>{modeLabel}</span>
             {profile && <span className={styles.userName}>{profile.name}</span>}
             <LogoutButton className={styles.mobileLogout} />
             <div className={styles.avatar} role="img" aria-label={profile ? `${profile.name}'s avatar` : "Your avatar"}>
