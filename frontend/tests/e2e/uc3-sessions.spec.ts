@@ -78,7 +78,7 @@ test('TCUC3_9 upcoming sessions appear on the student and volunteer dashboards, 
   await settled();
   await expect(page.locator('aside')).toContainText(/Volunteer/i);
   await evidence(page, 'TCUC3_9c');
-  // No need to switch back: the next page.goto reloads the app, which starts in the student view again.
+  // The selected Volunteer view now survives reloads in this account's browser session.
 });
 
 test('TCUC3_10 empty, loading, error and no-request screens', async () => {
