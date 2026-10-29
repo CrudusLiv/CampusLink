@@ -1,0 +1,381 @@
+/* Landing page only. The photo lives in public/images/hands-bg.jpg */
+
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: #f5f1ea;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  color-scheme: dark;
+  background:
+    linear-gradient(180deg, rgba(7, 9, 12, 0.45) 0%, rgba(7, 9, 12, 0.15) 35%, rgba(7, 9, 12, 0.45) 62%, rgba(20, 22, 30, 0.9) 80%, #1a1d26 100%),
+    url("/images/hands-bg.jpg") center top / 100% auto no-repeat,
+    #1a1d26;
+}
+
+/* --- Header --- */
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.75rem 2.5rem;
+}
+
+.logo {
+  font-family: var(--font-display), sans-serif;
+  font-size: 1.0625rem;
+  font-weight: 500;
+  letter-spacing: 0.35em;
+}
+
+.navButtons {
+  display: flex;
+  gap: 0.625rem;
+}
+
+.btnOutline,
+.btnFilled,
+.btnOutlineLarge,
+.btnFilledLarge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.btnOutline,
+.btnFilled {
+  min-height: 2.5rem;
+  padding: 0 1.125rem;
+  font-size: 0.875rem;
+}
+
+.btnOutlineLarge,
+.btnFilledLarge {
+  min-height: 3.125rem;
+  padding: 0 1.75rem;
+  font-size: 0.9375rem;
+}
+
+.btnOutline,
+.btnOutlineLarge {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(16, 20, 26, 0.35);
+  color: #f5f1ea;
+}
+
+.btnFilled,
+.btnFilledLarge {
+  border: 0;
+  background: linear-gradient(100deg, #f6ddba 0%, #f5f1ea 50%, #cfe3f5 100%);
+  color: #14181e;
+}
+
+.btnOutline:hover,
+.btnOutlineLarge:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.btnFilled:hover,
+.btnFilledLarge:hover {
+  filter: brightness(1.05);
+}
+
+.btnOutline:focus-visible,
+.btnFilled:focus-visible,
+.btnOutlineLarge:focus-visible,
+.btnFilledLarge:focus-visible,
+.cardLink:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 3px;
+}
+
+/* --- Main --- */
+.main {
+  flex: 1;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: 0 2rem 3rem;
+}
+
+/* --- Hero --- */
+.hero {
+  min-height: 34rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  text-align: center;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
+}
+
+.heroTitle {
+  margin: 0;
+  font-family: var(--font-display), sans-serif;
+  font-size: 4.25rem;
+  line-height: 1.06;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+}
+
+.heroDesc {
+  margin: 0;
+  max-width: 35rem;
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: #e4ded5;
+}
+
+.heroButtons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+/* --- Feature cards --- */
+.featuresWrap {
+  margin-top: -4.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.375rem;
+}
+
+.featuresEyebrow {
+  margin: 0;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: #f6ddba;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.375rem;
+}
+
+@media (min-width: 768px) {
+  .features {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1.875rem;
+  border-radius: 28px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+}
+
+/* Each card has a soft tint: lavender = Student, gold = Volunteer, blue = sessions */
+.cardStudent {
+  --tint: rgba(169, 166, 242, 0.34);
+  --icon-from: #c9c6fa;
+  --icon-to: #a9a6f2;
+  --ink: #2a2766;
+  border: 1px solid rgba(201, 198, 250, 0.4);
+}
+
+.cardVolunteer {
+  --tint: rgba(233, 179, 119, 0.34);
+  --icon-from: #f8ddb4;
+  --icon-to: #e9b377;
+  --ink: #5a3410;
+  border: 1px solid rgba(248, 221, 180, 0.4);
+}
+
+.cardSessions {
+  --tint: rgba(169, 208, 226, 0.32);
+  --icon-from: #d4eaf4;
+  --icon-to: #a9d0e2;
+  --ink: #173b4c;
+  border: 1px solid rgba(212, 234, 244, 0.4);
+}
+
+.card {
+  background: linear-gradient(165deg, var(--tint) 0%, rgba(255, 255, 255, 0.08) 100%);
+}
+
+.cardNumber {
+  position: absolute;
+  right: 1.375rem;
+  top: 0.875rem;
+  font-family: var(--font-display), sans-serif;
+  font-size: 4rem;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.14);
+}
+
+.cardIcon {
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--icon-from), var(--icon-to));
+  color: var(--ink);
+}
+
+.cardTitle {
+  margin: 0;
+  font-family: var(--font-display), sans-serif;
+  font-size: 1.4375rem;
+  font-weight: 500;
+}
+
+.cardDesc {
+  margin: 0;
+  flex: 1;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: #e4ded5;
+}
+
+.cardLink {
+  align-self: flex-start;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* --- Footer --- */
+.footer {
+  text-align: center;
+  padding: 1.5rem 2rem 2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.8125rem;
+  color: #a8a39b;
+}
+
+/* --- Phones --- */
+@media (max-width: 640px) {
+  .header {
+    padding: 1.25rem 1rem;
+  }
+
+  .main {
+    padding: 0 1rem 2rem;
+  }
+
+  .hero {
+    min-height: 26rem;
+  }
+
+  .heroTitle {
+    font-size: 2.75rem;
+  }
+
+  .featuresWrap {
+    margin-top: 0;
+  }
+}
+
+/* ===== Motion: drifting photo, floating sparkles, fade-in, card hover ===== */
+.container {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: #1a1d26;
+}
+
+.container::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    linear-gradient(180deg, rgba(7, 9, 12, 0.45) 0%, rgba(7, 9, 12, 0.15) 35%, rgba(7, 9, 12, 0.45) 62%, rgba(20, 22, 30, 0.9) 80%, #1a1d26 100%),
+    url("/images/hands-bg.jpg") center top / 100% auto no-repeat;
+  transform-origin: center top;
+  animation: clDrift 30s ease-in-out infinite alternate;
+}
+
+.container::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle, rgba(246, 226, 196, 0.85) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle, rgba(207, 227, 245, 0.7) 0 1px, transparent 2px);
+  background-size: 220px 220px, 160px 160px;
+  background-position: 0 0, 60px 90px;
+  animation: clSparkle 24s linear infinite, clTwinkle 4s ease-in-out infinite alternate;
+}
+
+.hero {
+  animation: clRise 0.9s ease-out backwards;
+}
+
+.card {
+  animation: clRise 0.8s ease-out backwards;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:nth-child(1) { animation-delay: 0.3s; }
+.card:nth-child(2) { animation-delay: 0.45s; }
+.card:nth-child(3) { animation-delay: 0.6s; }
+
+.card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 32px 70px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+@keyframes clDrift {
+  from { transform: scale(1); }
+  to { transform: scale(1.06); }
+}
+
+@keyframes clSparkle {
+  from { background-position: 0 0, 60px 90px; }
+  to { background-position: 0 -440px, 60px -230px; }
+}
+
+@keyframes clTwinkle {
+  from { opacity: 0.35; }
+  to { opacity: 0.8; }
+}
+
+@keyframes clRise {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .container::before,
+  .container::after,
+  .hero,
+  .card {
+    animation: none;
+  }
+
+  .card:hover {
+    transform: none;
+  }
+}

@@ -6,9 +6,11 @@
 
 import { useState, FormEvent } from "react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
-import styles from "./register.module.css";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+import AuthLayout from "@/components/auth/AuthLayout";
+import { passwordRules } from "@/lib/passwordRules";
+import styles from "./register.module.css";
 
 // The shape of the form data
 type FormData = {
@@ -49,13 +51,8 @@ export function validateRegistration(data: FormData): FormErrors {
   }
 
   // Same password rule as User Story 8: at least 8 characters, 1 uppercase, 1 number
-  if (
-    data.password.length < 8 ||
-    !/[A-Z]/.test(data.password) ||
-    !/\d/.test(data.password)
-  ) {
-    errors.password =
-      "Password needs at least 8 characters, 1 uppercase letter and 1 number.";
+  if (data.password.length < 8 || !/[A-Z]/.test(data.password) || !/\d/.test(data.password)) {
+    errors.password = "Password needs at least 8 characters, 1 uppercase letter and 1 number.";
   }
 
   if (data.confirmPassword !== data.password) {
@@ -67,7 +64,7 @@ export function validateRegistration(data: FormData): FormErrors {
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [form, setForm] = useState<FormData> ({
+  const [form, setForm] = useState<FormData>({
     fullName: "",
     studentId: "",
     email: "",
@@ -78,7 +75,6 @@ export default function RegisterPage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false); // true while waiting for Supabase
   const [serverError, setServerError] = useState(""); // error returned by Supabase
-  const [checkEmail, setCheckEmail] = useState(false); // account created, waiting for email confirmation
 
   // Updates one field when the user types
   function handleChange(field: keyof FormData, value: string) {
@@ -126,92 +122,83 @@ export default function RegisterPage() {
     }
 
     // Not logged in yet: the first login must pass the email code (2FA)
-if (data.session) {
-  await supabase.auth.signOut({ scope: "local" });
-}
-// Go straight to the login page, with the email filled in
-router.replace(`/login?registered=1&email=${encodeURIComponent(form.email.trim().toLowerCase())}`);
-    setCheckEmail(true);
+    if (data.session) {
+      await supabase.auth.signOut({ scope: "local" });
     }
+    // Go straight to the login page, with the email filled in
+    router.replace(`/login?registered=1&email=${encodeURIComponent(form.email.trim().toLowerCase())}`);
+  }
 
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <Link href="/" className={styles.logo}>
-          CampusLink
-        </Link>
-      </header>
+    <AuthLayout active="register" wide>
+      <h1 className={styles.title}>Create your account</h1>
+      <p className={styles.subtitle}>Sign up with your HELP University email to ask for or offer peer support.</p>
 
-      <main className={styles.main}>
-        <div className={styles.card}>
-          <h1 className={styles.title}>Create your account</h1>
-          <p className={styles.subtitle}>
-            Sign up with your HELP University email to ask for or offer peer support.
-          </p>
+      {serverError && <p className={styles.serverError}>{serverError}</p>}
 
-          {checkEmail && (
-            <p className={styles.success}>
-              Account created. <Link href="/login">Log in</Link> with your email and password, and we'll send a code to your inbox.
-            </p>
-          )}
-
-          {serverError && <p className={styles.serverError}>{serverError}</p>}
-
-          <form onSubmit={handleSubmit} noValidate className={styles.form}>
-            <Field
-              label="Full name"
-              value={form.fullName}
-              error={errors.fullName}
-              onChange={(v) => handleChange("fullName", v)}
-            />
-            <Field
-              label="Student ID"
-              value={form.studentId}
-              error={errors.studentId}
-              placeholder="BXXXXXXX"
-              onChange={(v) => handleChange("studentId", v)}
-            />
-            <Field
-              label="University email"
-              type="email"
-              value={form.email}
-              error={errors.email}
-              placeholder="b2400089@helplive.edu.my"
-              onChange={(v) => handleChange("email", v)}
-            />
-            <Field
-              label="Phone number (optional)"
-              type="tel"
-              value={form.phone}
-              error={errors.phone}
-              onChange={(v) => handleChange("phone", v)}
-            />
-            <Field
-              label="Password"
-              type="password"
-              value={form.password}
-              error={errors.password}
-              onChange={(v) => handleChange("password", v)}
-            />
-            <Field
-              label="Confirm password"
-              type="password"
-              value={form.confirmPassword}
-              error={errors.confirmPassword}
-              onChange={(v) => handleChange("confirmPassword", v)}
-            />
-
-            <button type="submit" className={styles.submit} disabled={loading}>
-              {loading ? "Creating account..." : "Create account"}
-            </button>
-          </form>
-
-          <p className={styles.switch}>
-            Already have an account? <Link href="/login">Log in</Link>
-          </p>
+      <form onSubmit={handleSubmit} noValidate className={styles.form}>
+        <div className={styles.grid}>
+          <Field
+            label="Full name"
+            value={form.fullName}
+            error={errors.fullName}
+            onChange={(v) => handleChange("fullName", v)}
+          />
+          <Field
+            label="Student ID"
+            value={form.studentId}
+            error={errors.studentId}
+            placeholder="BXXXXXXX"
+            onChange={(v) => handleChange("studentId", v)}
+          />
+          <Field
+            label="University email"
+            type="email"
+            value={form.email}
+            error={errors.email}
+            placeholder="b2400089@helplive.edu.my"
+            onChange={(v) => handleChange("email", v)}
+          />
+          <Field
+            label="Phone number (optional)"
+            type="tel"
+            value={form.phone}
+            error={errors.phone}
+            onChange={(v) => handleChange("phone", v)}
+          />
+          <Field
+            label="Password"
+            type="password"
+            value={form.password}
+            error={errors.password}
+            onChange={(v) => handleChange("password", v)}
+          />
+          <Field
+            label="Confirm password"
+            type="password"
+            value={form.confirmPassword}
+            error={errors.confirmPassword}
+            onChange={(v) => handleChange("confirmPassword", v)}
+          />
         </div>
-      </main>
-    </div>
+
+        <ul className={styles.checklist} aria-label="Password rules">
+          {passwordRules(form.password).map((rule) => (
+            <li key={rule.text} className={rule.ok ? styles.checkOk : styles.checkTodo}>
+              {rule.text}
+            </li>
+          ))}
+        </ul>
+
+        <button type="submit" className={styles.submit} disabled={loading}>
+          {loading ? "Creating account..." : "Create account"}
+        </button>
+      </form>
+
+      <p className={styles.switch}>
+        Already have an account? <Link href="/login">Log in</Link>
+      </p>
+    </AuthLayout>
   );
 }
 

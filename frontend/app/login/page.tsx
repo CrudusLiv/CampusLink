@@ -4,11 +4,13 @@
 // Step 1: check the university email + password.
 // Step 2: email a 6-digit code (valid 5 minutes). The student only gets a
 //         logged-in session after entering the correct code.
+// Only HELP University email + 2FA is offered (User Story 4 "Won't": no external
+// social / Microsoft sign-in buttons on the login page).
 
 import { useEffect, useState, FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import AuthLayout from "@/components/auth/AuthLayout";
 import OtpInput from "@/components/auth/OtpInput";
 import styles from "../register/register.module.css";
 import otpStyles from "@/components/auth/OtpInput.module.css";
@@ -44,7 +46,6 @@ function lockKey(email: string) {
 }
 
 export default function LoginPage() {
-  const router = useRouter();
   const [step, setStep] = useState<"password" | "code">("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -67,14 +68,14 @@ export default function LoginPage() {
   const isExpired = expiresAt !== null && codeSecondsLeft === 0;
 
   // Coming from the register page: show a message and fill in the email
-useEffect(() => {
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("registered") === "1") {
-    setNotice("Account created! Log in with your email and password. We'll then email you a 6-digit code to confirm it's you.");
-  }
-  const fromRegister = params.get("email");
-  if (fromRegister) setEmail(fromRegister);
-}, []);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("registered") === "1") {
+      setNotice("Account created! Log in with your email and password. We'll then email you a 6-digit code to confirm it's you.");
+    }
+    const fromRegister = params.get("email");
+    if (fromRegister) setEmail(fromRegister);
+  }, []);
 
   // Tick every second while the code step is showing (countdown timers)
   useEffect(() => {
@@ -151,15 +152,6 @@ useEffect(() => {
   }
 
   // Step 2: 6-digit code
-    // Sign in with a HELP University Microsoft account (Microsoft handles its own 2FA)
-  async function handleMicrosoft() {
-    setError("");
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: "azure",
-      options: { scopes: "email", redirectTo: `${window.location.origin}/dashboard` },
-    });
-    if (oauthError) setError("We couldn't start Microsoft sign-in. Please try again.");
-  }
   async function handleCodeSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -213,7 +205,7 @@ useEffect(() => {
       // ignore storage errors
     }
     // Full page load so the dashboard reads the new session from storage
-  window.location.assign("/dashboard");
+    window.location.assign("/dashboard");
   }
 
   async function handleResend() {
@@ -232,127 +224,125 @@ useEffect(() => {
   }
 
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <Link href="/" className={styles.logo}>
-          CampusLink
-        </Link>
-      </header>
-
-      <main className={styles.main}>
-        <div className={styles.card}>
-          {step === "password" ? (
-            <>
-              <h1 className={styles.title}>Log in</h1>
-            <p className={styles.subtitle}>Step 1 of 2 · Enter your HELP University email and password.</p>
+    <AuthLayout
+      active="login"
+      heroEyebrow="HELP UNIVERSITY PEER SUPPORT"
+      heroTitle="Welcome back. Someone's ready to help."
+      heroText="Ask a fellow student for help, or volunteer your time. Book a session in a few steps."
+    >
+      {step === "password" ? (
+        <>
+          <div className={styles.step}>
+            <span className={styles.stepBadge}>STEP 1 OF 2</span>
+            <span className={styles.stepBarHalf} aria-hidden="true" />
+          </div>
+          <h1 className={styles.title}>Log in</h1>
+          <p className={styles.subtitle}>Enter your HELP University email and password.</p>
 
           {notice && <p className={styles.success}>{notice}</p>}
           {error && <p className={styles.serverError}>{error}</p>}
 
-              <form onSubmit={handlePasswordSubmit} noValidate className={styles.form}>
-                <div className={styles.field}>
-                  <label htmlFor="email" className={styles.label}>
-                    University email
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="bxxxxxxx@helplive.edu.my"
-                    className={styles.input}
-                  />
-                </div>
+          <form onSubmit={handlePasswordSubmit} noValidate className={styles.form}>
+            <div className={styles.field}>
+              <label htmlFor="email" className={styles.label}>
+                University email
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="bxxxxxxx@helplive.edu.my"
+                className={styles.input}
+              />
+            </div>
 
-                <div className={styles.field}>
-                  <label htmlFor="password" className={styles.label}>
-                    Password
-                  </label>
-                  <input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className={styles.input}
-                  />
-                </div>
-
-                <button type="submit" className={styles.submit} disabled={loading}>
-                  {loading ? "Checking..." : "Log in"}
-                </button>
+            <div className={styles.field}>
+              <div className={styles.labelRow}>
+                <label htmlFor="password" className={styles.label}>
+                  Password
+                </label>
                 <Link href="/forgot-password" className={styles.forgotLink}>
                   Forgot password?
                 </Link>
-              </form>
-
-              <div className={styles.divider}>or</div>
-                <button type="button" onClick={handleMicrosoft} className={styles.microsoftButton}>
-                  Sign in with Microsoft (HELP account)
-                </button>
-
-              <p className={styles.switch}>
-                New to CampusLink? <Link href="/register">Create an account</Link>
-              </p>
-            </>
-          ) : (
-            <>
-              <h1 className={styles.title}>Enter your verification code</h1>
-              <p className={styles.subtitle}>
-                Step 2 of 2 · For your security, we sent a 6-digit code to <strong>{cleanEmail}</strong>.
-                Type it below to finish logging in.
-              </p>
-              <p className={styles.subtitle} style={{ fontSize: "0.8125rem" }}>
-                It can take up to a minute to arrive. Check your Junk folder if you can't find it.
-              </p>
-
-              {error && <p className={styles.serverError}>{error}</p>}
-
-              <form onSubmit={handleCodeSubmit} noValidate>
-                <OtpInput
-                  digits={digits}
-                  onChange={(d) => {
-                    setDigits(d);
-                    if (!isLocked) setError("");
-                  }}
-                  disabled={isLocked || isExpired || loading}
-                  hasError={Boolean(error)}
-                />
-
-                {isLocked ? (
-                  <p className={otpStyles.timerExpired}>Locked. Try again in {lockSecondsLeft}s.</p>
-                ) : isExpired ? (
-                  <p className={otpStyles.timerExpired}>Code expired. Send a new code.</p>
-                ) : (
-                  <p className={otpStyles.timer}>Code expires in {formatTime(codeSecondsLeft)}</p>
-                )}
-
-                <button
-                  type="submit"
-                  className={styles.submit}
-                  style={{ width: "100%", marginTop: "1.25rem" }}
-                  disabled={loading || isLocked || isExpired}
-                >
-                  {loading ? "Verifying..." : "Verify and log in"}
-                </button>
-              </form>
-
-              <div className={otpStyles.secondaryRow}>
-                <button type="button" className={otpStyles.linkButton} onClick={backToPassword}>
-                  Use a different account
-                </button>
-                <button
-                  type="button"
-                  className={otpStyles.linkButton}
-                  onClick={handleResend}
-                  disabled={loading || resendSecondsLeft > 0}
-                >
-                  {resendSecondsLeft > 0 ? `Send a new code (${resendSecondsLeft}s)` : "Send a new code"}
-                </button>
               </div>
-            </>
-          )}
-        </div>
-      </main>
-    </div>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Your password"
+                className={styles.input}
+              />
+            </div>
+
+            <button type="submit" className={styles.submit} disabled={loading}>
+              {loading ? "Checking..." : "Log in"}
+            </button>
+          </form>
+
+          <p className={styles.switch}>
+            New to CampusLink? <Link href="/register">Create an account</Link>
+          </p>
+        </>
+      ) : (
+        <>
+          <div className={styles.step}>
+            <span className={styles.stepBadge}>STEP 2 OF 2</span>
+            <span className={styles.stepBarFull} aria-hidden="true" />
+          </div>
+          <h1 className={styles.title}>Enter your verification code</h1>
+          <p className={styles.subtitle}>
+            For your security, we sent a 6-digit code to <strong>{cleanEmail}</strong>. Type it below to finish
+            logging in. It can take up to a minute to arrive. Check your Junk folder if you can&apos;t find it.
+          </p>
+
+          {error && <p className={styles.serverError}>{error}</p>}
+
+          <form onSubmit={handleCodeSubmit} noValidate>
+            <OtpInput
+              digits={digits}
+              onChange={(d) => {
+                setDigits(d);
+                if (!isLocked) setError("");
+              }}
+              disabled={isLocked || isExpired || loading}
+              hasError={Boolean(error)}
+            />
+
+            {isLocked ? (
+              <p className={otpStyles.timerExpired}>Locked. Try again in {lockSecondsLeft}s.</p>
+            ) : isExpired ? (
+              <p className={otpStyles.timerExpired}>Code expired. Send a new code.</p>
+            ) : (
+              <p className={otpStyles.timer}>Code expires in {formatTime(codeSecondsLeft)}</p>
+            )}
+
+            <button
+              type="submit"
+              className={styles.submit}
+              style={{ width: "100%", marginTop: "1.25rem" }}
+              disabled={loading || isLocked || isExpired}
+            >
+              {loading ? "Verifying..." : "Verify and log in"}
+            </button>
+          </form>
+
+          <div className={otpStyles.secondaryRow}>
+            <button type="button" className={otpStyles.linkButton} onClick={backToPassword}>
+              Use a different account
+            </button>
+            <button
+              type="button"
+              className={otpStyles.linkButton}
+              onClick={handleResend}
+              disabled={loading || resendSecondsLeft > 0}
+            >
+              {resendSecondsLeft > 0 ? `Send a new code (${resendSecondsLeft}s)` : "Send a new code"}
+            </button>
+          </div>
+        </>
+      )}
+    </AuthLayout>
   );
 }
