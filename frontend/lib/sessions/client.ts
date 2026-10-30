@@ -17,18 +17,23 @@ async function api(path: string, init: { method?: string; body?: unknown } = {})
 
 /** `preview` only exists so the UI states can be demoed with /sessions?state=empty|error. */
 export type PreviewState = 'empty' | 'error';
+export type SessionRole = 'student' | 'volunteer';
 
-export async function fetchUpcoming(preview?: PreviewState): Promise<SessionView[]> {
+export async function fetchUpcoming(preview?: PreviewState, role?: SessionRole): Promise<SessionView[]> {
   if (preview === 'error') throw new Error('preview error');
   if (preview === 'empty') return [];
-  const { status, body } = await api('/api/sessions?status=Scheduled&upcoming=true');
+  const params = new URLSearchParams({ status: 'Scheduled', upcoming: 'true' });
+  if (role) params.set('role', role);
+  const { status, body } = await api(`/api/sessions?${params}`);
   if (status !== 200 || !body) throw new Error(`Could not load sessions (${status})`);
   return body.sessions as SessionView[];
 }
 
-/** Completed + Cancelled sessions, newest first. */
-export async function fetchHistory(): Promise<SessionView[]> {
-  const { status, body } = await api('/api/sessions?history=true');
+/** Cancelled + elapsed scheduled sessions, newest first. */
+export async function fetchHistory(role?: SessionRole): Promise<SessionView[]> {
+  const params = new URLSearchParams({ history: 'true' });
+  if (role) params.set('role', role);
+  const { status, body } = await api(`/api/sessions?${params}`);
   if (status !== 200 || !body) throw new Error(`Could not load session history (${status})`);
   return body.sessions as SessionView[];
 }

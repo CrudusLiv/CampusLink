@@ -22,7 +22,7 @@ const STUDENT_NAV: Item[] = [
   { label: "Volunteer List", href: "/volunteer-lists" },
   { label: "My Support Requests", href: "/support-requests" },
   { label: "My Support Sessions", href: "/sessions" },
-  { label: "Support History", href: "/support-history" },
+  { label: "My History", href: "/support-history" },
   { label: "My Profile", href: "/profile" },
 ];
 const ADMIN_NAV: Item[] = [{ label: "Overview", href: "/dashboard" }, { label: "User Registrations" }];

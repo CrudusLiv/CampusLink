@@ -12,6 +12,7 @@ export async function GET(req: Request) {
 
   const params = new URL(req.url).searchParams;
   const query = listQuerySchema.safeParse({
+    role: params.get('role') ?? undefined,
     status: params.get('status') ?? undefined,
     upcoming: params.get('upcoming') ?? undefined,
     history: params.get('history') ?? undefined,

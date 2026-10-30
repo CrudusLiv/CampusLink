@@ -29,12 +29,14 @@ export default function VolunteerDirectory() {
   const [requestDate, setRequestDate] = useState("");
   const [supportMode, setSupportMode] = useState("");
   const [selectedVolunteerId, setSelectedVolunteerId] = useState("");
+  const [fromAskForSupport, setFromAskForSupport] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    setFromAskForSupport(params.get("from") === "ask-for-support");
     const date = params.get("date") ?? "";
     setSearch(params.get("search") ?? "");
     setSkill(params.get("skill") ?? "");
@@ -108,6 +110,7 @@ export default function VolunteerDirectory() {
     if (requestDate) params.set("date", requestDate);
     if (time) params.set("time", time);
     if (supportMode) params.set("mode", supportMode);
+    params.set("from", "volunteer-lists");
     return `/sessions/ask-for-support?${params.toString()}`;
   }
 
@@ -127,7 +130,7 @@ export default function VolunteerDirectory() {
 
   return (
     <main className={styles.content}>
-      <p className={styles.backRow}><Link href="/sessions/ask-for-support" className={styles.backLink}>← Back to Ask For Support</Link></p>
+      <p className={styles.backRow}><Link href={fromAskForSupport ? "/sessions/ask-for-support" : "/dashboard"} className={styles.backLink}>{fromAskForSupport ? "← Back to Ask For Support" : "← Back to Dashboard"}</Link></p>
       <div className={styles.toolbar}>
         <label className={styles.searchLabel}>
           <span className={styles.srOnly}>Search volunteers</span>

@@ -19,20 +19,22 @@ const COLS = 'session_id,request_id,scheduled_datetime,support_mode,status,meeti
 
 /**
  * The viewer's sessions, soonest first. `upcoming` keeps only those starting from now on;
- * `history` returns Completed + Cancelled, newest first; `id` returns that one session.
+ * `history` returns non-completed cancelled or elapsed sessions, newest first; `id` returns that one session.
  */
 export async function listSessions(
   db: Db,
   viewerId: string,
-  opts: { status?: SessionView['status']; upcoming?: boolean; history?: boolean; id?: string } = {},
+  opts: { status?: SessionView['status']; upcoming?: boolean; history?: boolean; id?: string; role?: 'student' | 'volunteer' } = {},
 ): Promise<SessionView[]> {
   // A session stays "upcoming" until its hour is over; after that, if nobody marked it completed, it moves to history.
   const hourAgo = new Date(Date.now() - 3_600_000).toISOString();
   let q = db.from('session').select(`${COLS}, support_request!inner(title,description,requester_id,volunteer_id)`);
+  if (opts.role === 'student') q = q.eq('support_request.requester_id', viewerId);
+  if (opts.role === 'volunteer') q = q.eq('support_request.volunteer_id', viewerId);
   q = q.order('scheduled_datetime', { ascending: !opts.history });
   if (opts.id) q = q.eq('session_id', opts.id);
   if (opts.status) q = q.eq('status', opts.status);
-  if (opts.history) q = q.or(`status.in.(Completed,Cancelled),scheduled_datetime.lt.${hourAgo}`);
+  if (opts.history) q = q.or(`status.eq.Cancelled,and(status.eq.Scheduled,scheduled_datetime.lt.${hourAgo})`);
   if (opts.upcoming) q = q.gte('scheduled_datetime', hourAgo);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
