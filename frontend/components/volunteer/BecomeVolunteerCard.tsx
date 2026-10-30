@@ -18,7 +18,7 @@ export default function BecomeVolunteerCard({ userId }: { userId: string }) {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
-  const { view, setView } = useVolunteerDashboardView();
+  const { view, setView, ready: viewReady } = useVolunteerDashboardView();
 
   useEffect(() => {
     supabase
@@ -61,7 +61,7 @@ export default function BecomeVolunteerCard({ userId }: { userId: string }) {
           <h2 className={styles.title}>You're a volunteer</h2>
           <p className={styles.text}>Keep your subjects and free times up to date so students can find you.</p>
         </div>
-        <section className={styles.dashboardSwitch} aria-labelledby="dashboard-view-title">
+        {viewReady && <section className={styles.dashboardSwitch} aria-labelledby="dashboard-view-title">
           <div>
             <h3 id="dashboard-view-title" className={styles.switchTitle}>Choose dashboard view</h3>
             <p className={styles.text}>Switch between your student and volunteer dashboards.</p>
@@ -80,7 +80,7 @@ export default function BecomeVolunteerCard({ userId }: { userId: string }) {
               onClick={() => { setView("volunteer"); router.push("/dashboard"); }}
             >Volunteer</button>
           </div>
-        </section>
+        </section>}
         <Link href="/volunteer/setup" className={styles.secondaryButton}>
           Edit skills &amp; availability
         </Link>

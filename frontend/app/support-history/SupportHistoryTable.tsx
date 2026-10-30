@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import RequestStatusBadge from "@/components/support-requests/RequestStatusBadge";
 import styles from "./support-history.module.css";
-import { loadStudentSupportHistory, type StudentHistoryRow, } from "@/lib/support-requests/student-history";
+import { loadStudentSupportHistory, type StudentHistoryRow } from "@/lib/support-requests/student-history";
 
 const FILTERS = ["All", "Completed", "Cancelled", "Declined"] as const;
 type StatusFilter = (typeof FILTERS)[number];

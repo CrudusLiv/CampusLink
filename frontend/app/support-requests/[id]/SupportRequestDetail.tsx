@@ -11,6 +11,7 @@ import styles from "../support-requests.module.css";
 export default function SupportRequestDetail({ requestId, mode }: { requestId: string; mode: "view" | "edit" }) {
   const { profile } = useCurrentUser();
   const [request, setRequest] = useState<ExistingSupportRequest | null>(null);
+  const [canEdit, setCanEdit] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -59,6 +60,7 @@ export default function SupportRequestDetail({ requestId, mode }: { requestId: s
         volunteer_id: data.volunteer_id,
         volunteer_name: volunteer?.name ?? null,
       });
+      setCanEdit(data.status === "Pending");
       setLoading(false);
     }
 
@@ -74,5 +76,8 @@ export default function SupportRequestDetail({ requestId, mode }: { requestId: s
     </main>
   );
 
-  return <main className={styles.content}><SubmitRequestForm mode={mode} request={request} /></main>;
+  return <main className={styles.content}>
+    {mode === "view" && <Link className={styles.backLink} href="/support-requests">← My Support Requests</Link>}
+    <SubmitRequestForm mode={mode} request={request} canEdit={canEdit} />
+  </main>;
 }

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { getVolunteerRequestAction, volunteerDirectoryCards } from "@/lib/support-requests/volunteers";
+import { getVolunteerRequestAction, volunteerDirectoryCards, withoutOwnVolunteer } from "@/lib/support-requests/volunteers";
 import styles from "./volunteer-lists.module.css";
 import { matchesVolunteerSearch, matchesVolunteerSkillAndFaculty, matchesWeeklyAvailability } from "@/lib/support-requests/volunteer-search";
 import { loadVolunteerDirectory, type VolunteerDirectoryEntry, } from "@/lib/support-requests/volunteer-directory";
@@ -29,12 +29,14 @@ export default function VolunteerDirectory() {
   const [requestDate, setRequestDate] = useState("");
   const [supportMode, setSupportMode] = useState("");
   const [selectedVolunteerId, setSelectedVolunteerId] = useState("");
+  const [fromAskForSupport, setFromAskForSupport] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    setFromAskForSupport(params.get("from") === "ask-for-support");
     const date = params.get("date") ?? "";
     setSearch(params.get("search") ?? "");
     setSkill(params.get("skill") ?? "");
@@ -89,15 +91,14 @@ export default function VolunteerDirectory() {
   );
   const days = useMemo(() => [...new Set(volunteers.flatMap((volunteer) => volunteer.availability.map((slot) => slot.day)))], [volunteers]);
 
-  const filtered = volunteers.filter((volunteer) => {
+  const otherVolunteers = withoutOwnVolunteer(volunteers, currentUserId);
+  const filtered = otherVolunteers.filter((volunteer) => {
     const matchesSearch = matchesVolunteerSearch(volunteer, search);
 
     return matchesSearch && matchesVolunteerSkillAndFaculty(volunteer, skill, faculty) && matchesWeeklyAvailability(volunteer.availability, day, time);
   });
 
   const visibleVolunteerCards = volunteerDirectoryCards(filtered, currentUserId);
-  const selectedVolunteer = volunteers.find((volunteer) => volunteer.user_id === selectedVolunteerId);
-  const selectedVolunteerAction = selectedVolunteer ? getVolunteerRequestAction(selectedVolunteer.user_id, currentUserId) : null;
 
   function requestUrl(volunteer: VolunteerDirectoryEntry) {
     const params = new URLSearchParams();
@@ -109,6 +110,7 @@ export default function VolunteerDirectory() {
     if (requestDate) params.set("date", requestDate);
     if (time) params.set("time", time);
     if (supportMode) params.set("mode", supportMode);
+    params.set("from", "volunteer-lists");
     return `/sessions/ask-for-support?${params.toString()}`;
   }
 
@@ -128,7 +130,7 @@ export default function VolunteerDirectory() {
 
   return (
     <main className={styles.content}>
-      <p className={styles.backRow}><Link href="/sessions/ask-for-support" className={styles.backLink}>← Back to Ask For Support</Link></p>
+      <p className={styles.backRow}><Link href={fromAskForSupport ? "/sessions/ask-for-support" : "/dashboard"} className={styles.backLink}>{fromAskForSupport ? "← Back to Ask For Support" : "← Back to Dashboard"}</Link></p>
       <div className={styles.toolbar}>
         <label className={styles.searchLabel}>
           <span className={styles.srOnly}>Search volunteers</span>
@@ -169,26 +171,26 @@ export default function VolunteerDirectory() {
         <div className={styles.message}>Loading the volunteer directory…</div>
       ) : filtered.length === 0 ? (
         <div className={styles.message}>
-          <h2>{volunteers.length ? "No volunteers match those filters" : "No volunteers yet"}</h2>
-          <p>{volunteers.length ? "Try changing your search or filters." : "Volunteers will appear here once they finish setting up their profile."}</p>
+          <h2>{otherVolunteers.length ? "No volunteers match those filters" : volunteers.length ? "No other volunteers yet" : "No volunteers yet"}</h2>
+          <p>{otherVolunteers.length ? "Try changing your search or filters." : volunteers.length ? "Other volunteers will appear here once they finish setting up their profile." : "Volunteers will appear here once they finish setting up their profile."}</p>
         </div>
       ) : (
         <ul className={styles.grid}>
           {visibleVolunteerCards.map(({ volunteer }) => (
-            <li
-              className={`${styles.card} ${selectedVolunteerId === volunteer.user_id ? styles.cardSelected : ""}`}
-              key={volunteer.user_id}
-              role="button"
-              tabIndex={0}
-              aria-pressed={selectedVolunteerId === volunteer.user_id}
-              onClick={() => setSelectedVolunteerId(volunteer.user_id)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  setSelectedVolunteerId(volunteer.user_id);
-                }
-              }}
-            >
+            <li className={styles.cardItem} key={volunteer.user_id}>
+              <div
+                className={`${styles.card} ${selectedVolunteerId === volunteer.user_id ? styles.cardSelected : ""}`}
+                role="button"
+                tabIndex={0}
+                aria-pressed={selectedVolunteerId === volunteer.user_id}
+                onClick={() => setSelectedVolunteerId((currentId) => currentId === volunteer.user_id ? "" : volunteer.user_id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setSelectedVolunteerId((currentId) => currentId === volunteer.user_id ? "" : volunteer.user_id);
+                  }
+                }}
+              >
               {volunteer.photo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img className={styles.avatar} src={volunteer.photo_url} alt={`${volunteer.name}'s profile`} />
@@ -201,21 +203,23 @@ export default function VolunteerDirectory() {
                 {volunteer.skills.length ? volunteer.skills.map((item) => <span className={styles.skill} key={item}>{item}</span>) : <span className={styles.muted}>Skills not set</span>}
               </div>
               {volunteer.availability.length > 0 && <p className={styles.availability}>Available: {[...new Set(volunteer.availability.map((slot) => slot.day))].join(", ")}</p>}
+              </div>
+              {selectedVolunteerId === volunteer.user_id && (() => {
+                const action = getVolunteerRequestAction(volunteer.user_id, currentUserId);
+                return <aside className={styles.cardActions} aria-label={`${volunteer.name} actions`}>
+                  <div className={styles.selectionActions}>
+                    <div className={styles.requestActionGroup}>
+                      <button type="button" className={`${styles.primaryAction} ${action.disabled ? styles.disabledAction : ""}`} disabled={action.disabled} onClick={() => router.push(requestUrl(volunteer))}>Make a request</button>
+                      {action.message && <p className={styles.selfRequestError} role="alert">{action.message}</p>}
+                    </div>
+                    <button type="button" className={styles.secondaryAction} onClick={() => router.push(profileUrl(volunteer))}>View volunteer profile</button>
+                  </div>
+                </aside>;
+              })()}
             </li>
           ))}
         </ul>
       )}
-
-      {selectedVolunteer && <aside className={styles.selectionBar} aria-label="Selected volunteer actions">
-        <p className={styles.selectionName}>Selected: <strong>{selectedVolunteer.name}</strong></p>
-        <div className={styles.selectionActions}>
-          <div className={styles.requestActionGroup}>
-            <button type="button" className={`${styles.primaryAction} ${selectedVolunteerAction?.disabled ? styles.disabledAction : ""}`} disabled={selectedVolunteerAction?.disabled} onClick={() => router.push(requestUrl(selectedVolunteer))}>Make a request</button>
-            {selectedVolunteerAction?.message && <p className={styles.selfRequestError} role="alert">{selectedVolunteerAction.message}</p>}
-          </div>
-          <button type="button" className={styles.secondaryAction} onClick={() => router.push(profileUrl(selectedVolunteer))}>View volunteer profile</button>
-        </div>
-      </aside>}
     </main>
   );
 }
