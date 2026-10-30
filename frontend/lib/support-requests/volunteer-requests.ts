@@ -38,7 +38,7 @@ export async function loadVolunteerRequests(
     : null;
   const ownerColumn = historyQuery?.ownerColumn ?? "volunteer_id";
   const statuses: SupportRequestStatus[] = view === "history"
-    ? ["Completed", "Cancelled", "Declined"]
+    ? [...historyQuery!.statuses]
     : view === "incoming"
       ? ["Pending"]
       : ["Accepted"];
