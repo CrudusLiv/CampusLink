@@ -63,7 +63,6 @@ a.navItem:hover { background-color: var(--surface-3); color: var(--ink); }
 .tab { flex: 1; padding: 0.875rem 0.25rem; text-align: center; font-size: 0.75rem; font-weight: 600; color: var(--text-3); text-decoration: none; }
 .tabActive { color: var(--ink); box-shadow: inset 0 3px 0 var(--mode-accent); }
 
-
 /* =====================================================================
    Galaxy frame (inside pages): photo background + glass sidebar.
    The main column becomes a light panel, so every page inside it keeps
@@ -101,6 +100,8 @@ a.navItem:hover { background-color: var(--surface-3); color: var(--ink); }
   .modeStrip { display: block; position: absolute; top: 0; left: 0; right: 0; z-index: 1; height: 5px; margin: 0 2rem; border-radius: 0 0 6px 6px; background: var(--cl-mode); }
   .header { border-radius: 28px 28px 0 0; }
   .header .modePill { background: var(--cl-mode); color: var(--cl-mode-ink); }
+
+  /* Slightly bigger header and page content */
   .header { padding: 1.75rem 2.25rem; }
   .title { font-size: 1.625rem; }
   .user { font-size: 1rem; }
@@ -110,4 +111,39 @@ a.navItem:hover { background-color: var(--surface-3); color: var(--ink); }
 
 @media (prefers-reduced-motion: reduce) {
   .navItem { transition: none; }
+}
+
+/* =====================================================================
+   Collapsible sidebar (desktop): full width ↔ icon rail
+   ===================================================================== */
+.sidebarTop { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
+.brandShort { display: none; }
+.collapseButton { display: none; }
+.navIcon { flex-shrink: 0; }
+.navLabel { min-width: 0; }
+
+@media (min-width: 768px) {
+  .sidebar { transition: width 0.25s ease, padding 0.25s ease; }
+  .sidebarTop { margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px solid rgba(255, 255, 255, 0.14); }
+  .sidebarTop .brand { margin: 0; padding: 0; border: 0; width: auto; }
+  .collapseButton { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.25); background: rgba(255, 255, 255, 0.08); color: #f5f1ea; cursor: pointer; }
+  .collapseButton:hover { background: rgba(255, 255, 255, 0.18); }
+  .collapseButton:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }
+  .navItem { display: flex; align-items: center; gap: 0.75rem; white-space: nowrap; }
+
+  /* Collapsed: icons only */
+  .layout[data-collapsed="true"] .sidebar { width: 88px; padding-left: 0.75rem; padding-right: 0.75rem; align-items: center; }
+  .layout[data-collapsed="true"] .sidebarTop { flex-direction: column; align-items: center; width: 100%; }
+  .layout[data-collapsed="true"] .brandName,
+  .layout[data-collapsed="true"] .navLabel,
+  .layout[data-collapsed="true"] .sidebar .modePill { display: none; }
+  .layout[data-collapsed="true"] .brandShort { display: block; font-family: var(--font-display), sans-serif; font-size: 1.125rem; font-weight: 500; letter-spacing: 0.15em; }
+  .layout[data-collapsed="true"] .nav { width: 100%; align-items: center; }
+  .layout[data-collapsed="true"] .navItem { justify-content: center; width: 52px; height: 52px; padding: 0; }
+  .layout[data-collapsed="true"] a.navItem:hover { transform: none; }
+  .layout[data-collapsed="true"] .logout { width: 100%; padding: 0.6rem 0; font-size: 0.75rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar { transition: none; }
 }
