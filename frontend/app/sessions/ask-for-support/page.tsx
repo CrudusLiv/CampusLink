@@ -7,13 +7,14 @@ import s from '@/components/sessions/sessions.module.css';
 
 export const metadata: Metadata = { title: 'Submit Request | CampusLink' };
 
-export default async function AskForSupportPage() {
+export default async function AskForSupportPage({ searchParams }: { searchParams: Promise<{ from?: string }> }) {
+  const { from } = await searchParams;
   return (
     <AppShell title="Submit Requests">
       <main className={s.content}>
         <p>
-          <Link className={s.backLink} href="/dashboard">
-            ← Back to Dashboard
+          <Link className={s.backLink} href={from === "volunteer-lists" ? "/volunteer-lists" : "/dashboard"}>
+            {from === "volunteer-lists" ? "← Back to Volunteer Lists" : "← Back to Dashboard"}
           </Link>
         </p>
         <Suspense fallback={null}>

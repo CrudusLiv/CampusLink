@@ -1,9 +1,11 @@
 import Link from 'next/link';
 import { UpcomingSessions } from './UpcomingSessions';
+import { useVolunteerDashboardView } from '@/components/dashboard/VolunteerViewContext';
 import s from './sessions.module.css';
 
 /** The "Upcoming sessions" block for the student and volunteer dashboards: heading, list, and a link to the full page. */
 export function UpcomingSessionsSection() {
+  const { view } = useVolunteerDashboardView();
   return (
     <section className={s.dashSection} aria-labelledby="dash-upcoming-title">
       <div className={s.dashHeader}>
@@ -11,7 +13,7 @@ export function UpcomingSessionsSection() {
         <Link className={s.backLink} href="/sessions">Manage all sessions</Link>
       </div>
       {/* The dashboard is a quick glance (next 3); My Sessions is where you book, open and manage them. */}
-      <UpcomingSessions limit={3} />
+      <UpcomingSessions limit={3} role={view} />
     </section>
   );
 }

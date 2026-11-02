@@ -123,7 +123,7 @@ function isWithinSlot(time: string, start: string, end: string) {
   return start.slice(0, 5) <= selected && selected < end.slice(0, 5);
 }
 
-export function SubmitRequestForm(props: { mode?: FormMode; request?: ExistingSupportRequest }) {
+export function SubmitRequestForm(props: { mode?: FormMode; request?: ExistingSupportRequest; canEdit?: boolean }) {
   const mode = props.mode ?? "create";
   const search = useSearchParams().toString();
   const snapshotRef = useRef<{ search: string; value: string } | null>(null);
@@ -149,9 +149,10 @@ export function SubmitRequestForm(props: { mode?: FormMode; request?: ExistingSu
   return <SubmitRequestFormContent key={key} {...props} mode={mode} initialValues={initialValues} initialReady={mode !== "create" || Boolean(snapshot)} />;
 }
 
-function SubmitRequestFormContent({ mode = "create", request, initialValues, initialReady }: {
+function SubmitRequestFormContent({ mode = "create", request, canEdit = true, initialValues, initialReady }: {
   mode?: FormMode;
   request?: ExistingSupportRequest;
+  canEdit?: boolean;
   initialValues: FormInitialValues;
   initialReady: boolean;
 }) {
@@ -203,6 +204,7 @@ function SubmitRequestFormContent({ mode = "create", request, initialValues, ini
     if (date) params.set("date", date);
     if (time) params.set("time", time);
     if (supportMode) params.set("mode", supportMode);
+    params.set("from", "ask-for-support");
     const query = params.toString();
     router.push(`/volunteer-lists${query ? `?${query}` : ""}`);
   }
@@ -557,9 +559,9 @@ function SubmitRequestFormContent({ mode = "create", request, initialValues, ini
           </div>
 
           {submitError && <p className={styles.formError} role="alert">{submitError}</p>}
-          {mode === "view" ? (
+          {mode === "view" && canEdit ? (
             <button type="button" className={styles.submitBtn} onClick={() => router.push(`/support-requests/${request?.id}?mode=edit`)}>Edit Request</button>
-          ) : (
+          ) : mode === "view" ? null : (
             <button type="submit" className={styles.submitBtn} disabled={loading}>
               {loading ? (mode === "edit" ? "Saving..." : "Submitting...") : mode === "edit" ? "Save edit" : "Submit request"}
             </button>

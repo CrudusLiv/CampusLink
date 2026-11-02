@@ -9,11 +9,11 @@ import StudentDashboard from "@/components/dashboard/StudentDashboard";
 
 export default function Dashboard() {
   const { profile, loading } = useCurrentUser();
-  const { view } = useVolunteerDashboardView();
+  const { view, ready: viewReady } = useVolunteerDashboardView();
   // Role comes from the signed-in user (public.users.role), not a toggle
   const role = profile?.role === "admin" ? "admin" : "student";
 
-  if (loading) return <AppShell title="Dashboard">{null}</AppShell>;
+  if (loading || !viewReady) return <AppShell title="Dashboard">{null}</AppShell>;
 
   if (role === "student" && view === "volunteer") {
     return <AppShell title="Dashboard"><VolunteerDashboard /></AppShell>;

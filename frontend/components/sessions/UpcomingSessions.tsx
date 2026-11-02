@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { fetchUpcoming, type PreviewState } from '@/lib/sessions/client';
+import { fetchUpcoming, type PreviewState, type SessionRole } from '@/lib/sessions/client';
 import type { SessionView } from '@/lib/sessions/types';
 import { EmptyState } from './EmptyState';
 import { SessionCard } from './SessionCard';
@@ -11,13 +11,13 @@ import s from './sessions.module.css';
 type State = { status: 'loading' } | { status: 'error' } | { status: 'ready'; sessions: SessionView[]; now: number };
 
 /** Drop-in "upcoming sessions" list for any dashboard. Fetches its own data. */
-export function UpcomingSessions({ preview, limit }: { preview?: PreviewState; limit?: number }) {
+export function UpcomingSessions({ preview, limit, role }: { preview?: PreviewState; limit?: number; role?: SessionRole }) {
   const [state, setState] = useState<State>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let live = true;
-    fetchUpcoming(preview)
+    fetchUpcoming(preview, role)
       .then((list) => {
         const sessions = list
           .filter((session) => session.status === 'Scheduled')
@@ -28,7 +28,7 @@ export function UpcomingSessions({ preview, limit }: { preview?: PreviewState; l
     return () => {
       live = false;
     };
-  }, [preview, attempt]);
+  }, [preview, role, attempt]);
 
   if (state.status === 'loading') return <SessionsSkeleton />;
 

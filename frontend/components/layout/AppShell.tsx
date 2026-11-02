@@ -14,7 +14,8 @@ import NotificationBell from "@/components/layout/NotificationBell";
 import styles from "./AppShell.module.css";
 import { Space_Grotesk } from "next/font/google";
 
-   const display = Space_Grotesk({ subsets: ["latin"], weight: ["500"], variable: "--font-display" });
+// Same wordmark font as the landing page
+const display = Space_Grotesk({ subsets: ["latin"], weight: ["500"], variable: "--font-display" });
 
 type Item = { label: string; href?: string };
 
@@ -91,7 +92,8 @@ export default function AppShell({ title, children }: { title: string; children:
   }
 
   return (
-       <div className={`${styles.layout} ${display.variable}`} data-mode={viewReady ? mode : "loading"}>      <aside className={styles.sidebar}>
+    <div className={`${styles.layout} ${display.variable}`} data-mode={viewReady ? mode : "loading"}>
+      <aside className={styles.sidebar}>
         <Link href="/dashboard" className={styles.brand} aria-label="CampusLink home">
           <span className={styles.brandName}>CampusLink</span>
         </Link>

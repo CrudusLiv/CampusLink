@@ -1,28 +1,28 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { fetchHistory } from '@/lib/sessions/client';
+import { fetchHistory, type SessionRole } from '@/lib/sessions/client';
 import type { SessionView } from '@/lib/sessions/types';
 import { SessionCard } from './SessionCard';
 import s from './sessions.module.css';
 
 const PAGE = 10;
 
-/** Completed and cancelled sessions, newest first. Hidden when there are none. */
-export function PastSessions() {
+/** Cancelled or elapsed sessions, excluding completed sessions. Hidden when there are none. */
+export function PastSessions({ role }: { role?: SessionRole }) {
   const [sessions, setSessions] = useState<SessionView[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [shown, setShown] = useState(PAGE);
 
   useEffect(() => {
     let live = true;
-    fetchHistory()
-      .then((list) => live && setSessions(list))
+    fetchHistory(role)
+      .then((list) => live && setSessions(list.filter((session) => session.status !== 'Completed')))
       .catch(() => live && setFailed(true));
     return () => {
       live = false;
     };
-  }, []);
+  }, [role]);
 
   if (failed) return <p className={s.error} role="alert">We couldn&apos;t load your past sessions. Please refresh the page.</p>;
   if (!sessions || sessions.length === 0) return null;

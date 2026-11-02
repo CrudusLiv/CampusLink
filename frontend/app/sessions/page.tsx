@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
 import AppShell from '@/components/layout/AppShell';
-import { CancellationNotices } from '@/components/sessions/CancellationNotices';
-import { PastSessions } from '@/components/sessions/PastSessions';
-import { UpcomingSessions } from '@/components/sessions/UpcomingSessions';
 import s from '@/components/sessions/sessions.module.css';
+import SessionsView from '@/components/sessions/SessionsView';
 
 export const metadata: Metadata = { title: 'My Support Sessions | CampusLink' };
 
@@ -13,11 +11,7 @@ export default async function SessionsPage({ searchParams }: { searchParams: Pro
   return (
     <AppShell title="My Support Sessions">
       <main className={s.content}>
-        <CancellationNotices />
-        <h2 className={s.sectionTitle}>Upcoming sessions</h2>
-        <p className={s.hint}>A session is booked automatically when a Volunteer accepts a request. Soonest first.</p>
-        <UpcomingSessions preview={preview} />
-        <PastSessions />
+        <SessionsView preview={preview} />
       </main>
     </AppShell>
   );

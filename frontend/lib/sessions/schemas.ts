@@ -40,6 +40,7 @@ export const joinDetailsSchema = z.object({
 
 /** GET /api/sessions?status=Scheduled&upcoming=true, ?history=true (Completed + Cancelled, newest first) or ?id= */
 export const listQuerySchema = z.object({
+  role: z.enum(['student', 'volunteer']).optional(),
   status: z.enum(['Scheduled', 'Completed', 'Cancelled']).optional(),
   upcoming: z.enum(['true', 'false']).optional().transform((v) => v === 'true'),
   history: z.enum(['true', 'false']).optional().transform((v) => v === 'true'),

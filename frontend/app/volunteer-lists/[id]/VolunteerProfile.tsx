@@ -82,6 +82,7 @@ export default function VolunteerProfile({ userId }: { userId: string }) {
     params.set("volunteerName", profile.name);
     if (profile.photo_url) params.set("volunteerPhoto", profile.photo_url);
     if (category) params.set("category", category);
+    params.set("from", "volunteer-lists");
     router.push(`/sessions/ask-for-support?${params.toString()}`);
   }
 

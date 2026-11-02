@@ -248,20 +248,20 @@ export default function SupportRequestsTable({ showSubmittedToast = false }: { s
           aria-label={`Actions for ${requests.find((request) => request.id === actionMenu.requestId)?.title ?? "support request"}`}
           style={{ left: actionMenu.left, top: actionMenu.top }}
         >
-          <Link role="menuitem" href={`/support-requests/${actionMenu.requestId}?mode=view`} onClick={closeActionMenu}>View</Link>
-          {requests.find((request) => request.id === actionMenu.requestId)?.status === "Pending" ? (
+          {requests.find((request) => request.id === actionMenu.requestId)?.status === "Pending" ? <>
+            <Link role="menuitem" href={`/support-requests/${actionMenu.requestId}?mode=view`} onClick={closeActionMenu}>View</Link>
             <Link role="menuitem" href={`/support-requests/${actionMenu.requestId}?mode=edit`} onClick={closeActionMenu}>Edit</Link>
-          ) : <button type="button" role="menuitem" disabled>Edit</button>}
-          <button
-            type="button"
-            role="menuitem"
-            disabled={requests.find((request) => request.id === actionMenu.requestId)?.status !== "Pending" || cancellingId === actionMenu.requestId}
-            onClick={() => {
-              const target = requests.find((request) => request.id === actionMenu.requestId);
-              closeActionMenu();
-              if (target) { setCancelTarget(target); setError(""); }
-            }}
-          >Cancel</button>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={cancellingId === actionMenu.requestId}
+              onClick={() => {
+                const target = requests.find((request) => request.id === actionMenu.requestId);
+                closeActionMenu();
+                if (target) { setCancelTarget(target); setError(""); }
+              }}
+            >Cancel</button>
+          </> : <Link role="menuitem" href={`/support-requests/${actionMenu.requestId}?mode=view`} onClick={closeActionMenu}>View</Link>}
         </div>,
         document.body,
       )}

@@ -15,6 +15,8 @@ import {
 } from "@/lib/support-requests/volunteer-requests";
 import styles from "./VolunteerDashboard.module.css";
 import historyStyles from "@/app/support-history/support-history.module.css";
+import { Avatar } from "@/components/sessions/Avatar";
+import sessionStyles from "@/components/sessions/sessions.module.css";
 
 const HISTORY_FILTERS = ["All", "Completed", "Cancelled", "Declined"] as const;
 type HistoryFilter = (typeof HISTORY_FILTERS)[number];
@@ -166,7 +168,7 @@ export default function VolunteerRequestList({ view }: { view: VolunteerRequestV
   }
 
   return (
-    <main className={styles.content}>
+    <main className={view === "history" ? historyStyles.content : styles.content}>
       {view === "history" && <>
         <label className={historyStyles.searchLabel} htmlFor="volunteer-history-search">Search or filter by category</label>
         <input id="volunteer-history-search" className={historyStyles.search} type="search" value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Search or filter by category" />
@@ -178,19 +180,50 @@ export default function VolunteerRequestList({ view }: { view: VolunteerRequestV
       {state === "loading" ? <p className={styles.empty}>Loading…</p> : state === "error" ? (
         <p className={styles.error} role="alert">We couldn&apos;t load this list. Check that the volunteer dashboard migration has been applied.</p>
       ) : (view === "history" ? filteredHistoryItems.length === 0 : items.length === 0) ? <p className={styles.empty}>{view === "history" && items.length > 0 ? "No history matches your search." : config.empty}</p> : (
-        <ul className={styles.list}>
-          {(view === "history" ? filteredHistoryItems : items).map((item) => <li key={item.id} className={styles.requestCard}>
+        (view === "history" ? <div className={historyStyles.tableWrap}>
+          <table className={historyStyles.table}>
+            <thead><tr>
+              <th scope="col">Session</th>
+              <th scope="col">Student</th>
+              <th scope="col">Date</th>
+              <th scope="col">Your rating</th>
+              <th scope="col">Status</th>
+            </tr></thead>
+            <tbody>
+              {filteredHistoryItems.map((item) => <tr key={item.id}>
+                <td className={historyStyles.sessionTitle}>{item.title}</td>
+                <td>{item.requester_name}</td>
+                <td>{new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${item.requested_date}T00:00:00Z`))}, {item.requested_time.slice(0, 5)}</td>
+                <td>{item.rating ? <span className={historyStyles.ratingStars} aria-label={`Your rating: ${item.rating} out of 5`}>{Array.from({ length: 5 }, (_, index) => index < item.rating! ? "★" : "☆").join("")}</span> : <span aria-label="No rating">—</span>}</td>
+                <td><RequestStatusBadge status={item.status} /></td>
+              </tr>)}
+            </tbody>
+          </table>
+        </div> : <ul className={styles.list}>
+          {items.map((item) => view === "incoming" ? <li key={item.id} className={`${sessionStyles.card} ${styles.incomingRequestCard}`}>
+            <Avatar person={{ id: item.requester_id, name: item.requester_name, photoUrl: null }} />
+            <div className={sessionStyles.cardBody}>
+              <h3 className={sessionStyles.cardTitle}>{item.title}</h3>
+              {item.description && <div className={styles.descriptionWrap} tabIndex={0} aria-label={`Request description: ${item.description}`}>
+                <p className={styles.requestDescription} aria-hidden="true">{item.description}</p>
+                <p className={styles.descriptionOverlay} aria-hidden="true">{item.description}</p>
+              </div>}
+              <p className={sessionStyles.cardMeta}>{new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kuala_Lumpur" }).format(new Date(requestedIso(item.requested_date, item.requested_time)))} · {item.support_mode ?? "Support"}</p>
+              <p className={sessionStyles.cardWith}>From {item.requester_name}</p>
+            </div>
+            <div className={styles.requestActions}>
+              <button type="button" className={styles.acceptButton} disabled={respondingId !== null || !item.isFree} title={item.isFree ? undefined : "You are not available at the requested time"} onClick={() => respondToRequest(item.id, "Accepted")}>{respondingId === item.id ? "…" : item.isFree ? "Accept" : "Not available"}</button>
+              <button type="button" className={styles.declineButton} disabled={respondingId !== null} onClick={() => respondToRequest(item.id, "Declined")}>Decline</button>
+            </div>
+          </li> : <li key={item.id} className={styles.requestCard}>
             <div>
               <strong>{item.requester_name}</strong>
               <span>{item.title} · {item.category}</span>
               <span>{new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${item.requested_date}T00:00:00Z`))}, {item.requested_time.slice(0, 5)} · {item.support_mode ?? "Support"}</span>
             </div>
-            {view === "incoming" ? <div className={styles.requestActions}>
-              <button type="button" className={styles.acceptButton} disabled={respondingId !== null || !item.isFree} title={item.isFree ? undefined : "You are not available at the requested time"} onClick={() => respondToRequest(item.id, "Accepted")}>{respondingId === item.id ? "…" : item.isFree ? "Accept" : "Not available"}</button>
-              <button type="button" className={styles.declineButton} disabled={respondingId !== null} onClick={() => respondToRequest(item.id, "Declined")}>Decline</button>
-            </div> : <RequestStatusBadge status={item.status} />}
+            <RequestStatusBadge status={item.status} />
           </li>)}
-        </ul>
+        </ul>)
       )}
     </main>
   );
