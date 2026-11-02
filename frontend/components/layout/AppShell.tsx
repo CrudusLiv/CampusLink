@@ -4,14 +4,17 @@
 // Role comes from the signed-in user's row in public.users (no manual toggle).
 // Items without an href are pages that don't exist yet: shown greyed out, not clickable.
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ReactNode } from "react";
 import LogoutButton from "@/components/auth/LogoutButton";
 import { useVolunteerDashboardView } from "@/components/dashboard/VolunteerViewContext";
 import { useCurrentUser } from "@/lib/useCurrentUser";
+import NotificationBell from "@/components/layout/NotificationBell";
 import styles from "./AppShell.module.css";
+import { Space_Grotesk } from "next/font/google";
+
+   const display = Space_Grotesk({ subsets: ["latin"], weight: ["500"], variable: "--font-display" });
 
 type Item = { label: string; href?: string };
 
@@ -21,7 +24,7 @@ const STUDENT_NAV: Item[] = [
   { label: "Volunteer List", href: "/volunteer-lists" },
   { label: "My Support Requests", href: "/support-requests" },
   { label: "My Support Sessions", href: "/sessions" },
-  { label: "Support History", href: "/support-history" },
+  { label: "My History", href: "/support-history" },
   { label: "My Profile", href: "/profile" },
 ];
 const ADMIN_NAV: Item[] = [{ label: "Overview", href: "/dashboard" }, { label: "User Registrations" }];
@@ -53,7 +56,7 @@ const initials = (name: string) =>
 
 export default function AppShell({ title, children }: { title: string; children: ReactNode }) {
   const { profile } = useCurrentUser();
-  const { view } = useVolunteerDashboardView();
+  const { view, ready: viewReady } = useVolunteerDashboardView();
   const pathname = usePathname();
   const admin = profile?.role === "admin";
   const volunteer = !admin && view === "volunteer";
@@ -88,16 +91,14 @@ export default function AppShell({ title, children }: { title: string; children:
   }
 
   return (
-    <div className={styles.layout} data-mode={mode}>
-      <aside className={styles.sidebar}>
+       <div className={`${styles.layout} ${display.variable}`} data-mode={viewReady ? mode : "loading"}>      <aside className={styles.sidebar}>
         <Link href="/dashboard" className={styles.brand} aria-label="CampusLink home">
-          <Image className={styles.brandLogo} src="/help-logo.png" alt="HELP University" width={200} height={200} priority />
           <span className={styles.brandName}>CampusLink</span>
         </Link>
-        <div className={`${styles.modePill} ${styles.section}`}>{modeLabel}</div>
-        <nav className={styles.nav} aria-label="Main">
+        {viewReady && <div className={`${styles.modePill} ${styles.section}`}>{modeLabel}</div>}
+        {viewReady && <nav className={styles.nav} aria-label="Main">
           {navItems.map((i) => renderItem(i, styles.navItem, styles.navItemActive))}
-        </nav>
+        </nav>}
         <LogoutButton className={styles.logout} />
       </aside>
 
@@ -106,7 +107,8 @@ export default function AppShell({ title, children }: { title: string; children:
         <header className={styles.header}>
           <h1 className={styles.title}>{title}</h1>
           <div className={styles.user}>
-            <span className={styles.modePill}>{modeLabel}</span>
+            {viewReady && <span className={styles.modePill}>{modeLabel}</span>}
+            <NotificationBell userId={profile?.user_id} />
             {profile && <span className={styles.userName}>{profile.name}</span>}
             <LogoutButton className={styles.mobileLogout} />
             <div className={styles.avatar} role="img" aria-label={profile ? `${profile.name}'s avatar` : "Your avatar"}>
@@ -118,9 +120,9 @@ export default function AppShell({ title, children }: { title: string; children:
         <div className={styles.body}>{children}</div>
       </div>
 
-      <nav className={styles.tabs} aria-label="Main">
+      {viewReady && <nav className={styles.tabs} aria-label="Main">
         {tabItems.map((i) => renderItem(i, styles.tab, styles.tabActive))}
-      </nav>
+      </nav>}
     </div>
   );
 }

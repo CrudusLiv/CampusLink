@@ -1,0 +1,23 @@
+.wrap { position: relative; display: inline-flex; flex: 0 0 auto; }
+.bell { position: relative; display: grid; place-items: center; width: 38px; height: 38px; padding: 0; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--surface); color: var(--ink); cursor: pointer; }
+.bell:hover { background: var(--surface-3); }
+.bell:focus-visible, .popover button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.bell svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.count { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; box-sizing: border-box; padding: 0 4px; display: grid; place-items: center; border-radius: 999px; background: #c62828; color: white; font-size: 0.66rem; line-height: 1; font-weight: 800; }
+.popover { position: absolute; z-index: 40; top: calc(100% + 10px); right: 0; width: min(360px, calc(100vw - 24px)); max-height: min(440px, 70vh); overflow: auto; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); box-shadow: 0 12px 32px rgb(15 23 42 / 18%); color: var(--text); }
+.popoverHead { position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; border-bottom: 1px solid var(--line); background: var(--surface); }
+.popoverHead h2 { margin: 0; color: var(--ink); font-size: 1rem; }
+.popoverHead button { width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent; color: var(--text-2); font-size: 1.4rem; cursor: pointer; }
+.list { margin: 0; padding: 0; list-style: none; }
+.list li { padding: 0.8rem 1rem; border-bottom: 1px solid var(--line); border-left: 3px solid transparent; }
+.list li.success { border-left-color: #16a34a; background: #f0fdf4; }
+.list li.error { border-left-color: #dc2626; background: #fef2f2; }
+.list li:last-child { border-bottom: 0; }
+.list p { margin: 0 0 0.35rem; font-size: 0.9rem; }
+.list time { color: var(--text-3); font-size: 0.75rem; }
+.empty { margin: 0; padding: 1.25rem 1rem; color: var(--text-2); font-size: 0.9rem; }
+.toastStack { position: fixed; z-index: 60; top: 1rem; right: 1rem; display: flex; flex-direction: column; gap: 0.65rem; max-height: calc(100vh - 2rem); max-width: min(420px, calc(100vw - 2rem)); overflow-y: auto; }
+.toast { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; padding: 0.85rem 1rem; border: 1px solid; border-radius: var(--radius-md); box-shadow: 0 8px 24px rgb(15 23 42 / 14%); font-size: 0.9rem; }
+.toastSuccess { border-color: #86efac; background: #f0fdf4; color: #14532d; }
+.toastError { border-color: #fca5a5; background: #fef2f2; color: #7f1d1d; }
+@media (max-width: 420px) { .popover { right: -5rem; } }
