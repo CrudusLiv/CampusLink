@@ -3,10 +3,11 @@
 // Shared shell for signed-in pages: sidebar (desktop), header, bottom tab bar (mobile).
 // Role comes from the signed-in user's row in public.users (no manual toggle).
 // Items without an href are pages that don't exist yet: shown greyed out, not clickable.
+// On desktop the sidebar can be collapsed to an icon rail; the choice is remembered in this browser.
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import LogoutButton from "@/components/auth/LogoutButton";
 import { useVolunteerDashboardView } from "@/components/dashboard/VolunteerViewContext";
 import { useCurrentUser } from "@/lib/useCurrentUser";
@@ -18,6 +19,32 @@ import { Space_Grotesk } from "next/font/google";
 const display = Space_Grotesk({ subsets: ["latin"], weight: ["500"], variable: "--font-display" });
 
 type Item = { label: string; href?: string };
+
+// Simple line icons for the collapsed sidebar (one path per page)
+const ICONS: Record<string, string> = {
+  "Dashboard": "M3 12l9-8 9 8M5 10v10h5v-6h4v6h5V10",
+  "Overview": "M3 12l9-8 9 8M5 10v10h5v-6h4v6h5V10",
+  "Ask for Support": "M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z",
+  "Volunteer List": "M16 19v-1a4 4 0 0 0-8 0v1M12 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM20 19v-1a3 3 0 0 0-2-2.8M4 19v-1a3 3 0 0 1 2-2.8",
+  "My Support Requests": "M9 5h6M9 12h6M9 16h4M6 3h12v18H6z",
+  "Incoming Requests": "M4 13h4l2 3h4l2-3h4M4 13l2-8h12l2 8v6H4z",
+  "My Support Sessions": "M3 5h18v16H3zM3 10h18M8 3v4M16 3v4",
+  "My Sessions": "M3 5h18v16H3zM3 10h18M8 3v4M16 3v4",
+  "Skills & Availability": "M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8-4.3-4.1 5.9-.8z",
+  "My History": "M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 7v5l3 2",
+  "My Profile": "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0",
+  "User Registrations": "M15 19v-1a4 4 0 0 0-8 0v1M11 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19 8v6M16 11h6",
+};
+
+function NavIcon({ label }: { label: string }) {
+  return (
+    <svg className={styles.navIcon} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={ICONS[label] ?? "M12 12h.01"} />
+    </svg>
+  );
+}
+
+const COLLAPSE_KEY = "campuslink-sidebar-collapsed";
 
 const STUDENT_NAV: Item[] = [
   { label: "Dashboard", href: "/dashboard" },
@@ -59,6 +86,24 @@ export default function AppShell({ title, children }: { title: string; children:
   const { profile } = useCurrentUser();
   const { view, ready: viewReady } = useVolunteerDashboardView();
   const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Remember the sidebar choice in this browser (storage can be blocked, so ignore errors)
+  useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem(COLLAPSE_KEY) === "1");
+    } catch {}
+  }, []);
+
+  function toggleCollapsed() {
+    setCollapsed((current) => {
+      const next = !current;
+      try {
+        localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0");
+      } catch {}
+      return next;
+    });
+  }
   const admin = profile?.role === "admin";
   const volunteer = !admin && view === "volunteer";
   const mode = admin ? "admin" : volunteer ? "volunteer" : "student";
@@ -74,7 +119,8 @@ export default function AppShell({ title, children }: { title: string; children:
     if (!item.href) {
       return (
         <span key={item.label} className={`${base} ${styles.soon}`} aria-disabled="true" title="Coming soon">
-          {item.label}
+          {base === styles.navItem && <NavIcon label={item.label} />}
+          <span className={styles.navLabel}>{item.label}</span>
         </span>
       );
     }
@@ -85,18 +131,35 @@ export default function AppShell({ title, children }: { title: string; children:
         href={item.href}
         className={`${base} ${active ? activeClass : ""}`}
         aria-current={active ? "page" : undefined}
+        title={collapsed ? item.label : undefined}
       >
-        {item.label}
+        {base === styles.navItem && <NavIcon label={item.label} />}
+        <span className={styles.navLabel}>{item.label}</span>
       </Link>
     );
   }
 
   return (
-    <div className={`${styles.layout} ${display.variable}`} data-mode={viewReady ? mode : "loading"}>
+    <div className={`${styles.layout} ${display.variable}`} data-collapsed={collapsed ? "true" : undefined} data-mode={viewReady ? mode : "loading"}>
       <aside className={styles.sidebar}>
-        <Link href="/dashboard" className={styles.brand} aria-label="CampusLink home">
-          <span className={styles.brandName}>CampusLink</span>
-        </Link>
+        <div className={styles.sidebarTop}>
+          <Link href="/dashboard" className={styles.brand} aria-label="CampusLink home">
+            <span className={styles.brandName}>CampusLink</span>
+            <span className={styles.brandShort} aria-hidden="true">CL</span>
+          </Link>
+          <button
+            type="button"
+            className={styles.collapseButton}
+            onClick={toggleCollapsed}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d={collapsed ? "M9 6l6 6-6 6" : "M15 6l-6 6 6 6"} />
+            </svg>
+          </button>
+        </div>
         {viewReady && <div className={`${styles.modePill} ${styles.section}`}>{modeLabel}</div>}
         {viewReady && <nav className={styles.nav} aria-label="Main">
           {navItems.map((i) => renderItem(i, styles.navItem, styles.navItemActive))}
