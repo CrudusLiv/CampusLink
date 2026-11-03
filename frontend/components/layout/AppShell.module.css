@@ -62,3 +62,88 @@ a.navItem:hover { background-color: var(--surface-3); color: var(--ink); }
 @media (min-width: 768px) { .tabs { display: none; } }
 .tab { flex: 1; padding: 0.875rem 0.25rem; text-align: center; font-size: 0.75rem; font-weight: 600; color: var(--text-3); text-decoration: none; }
 .tabActive { color: var(--ink); box-shadow: inset 0 3px 0 var(--mode-accent); }
+
+/* =====================================================================
+   Galaxy frame (inside pages): photo background + glass sidebar.
+   The main column becomes a light panel, so every page inside it keeps
+   its current light design. Image: public/images/hands-bg.jpg
+   ===================================================================== */
+.layout { position: relative; isolation: isolate; background-color: #07090c; }
+.layout::before { content: ""; position: fixed; inset: -40px; z-index: -1; background: url("/images/hands-bg.jpg") center / cover no-repeat; filter: blur(8px) brightness(0.62); }
+.layout[data-mode="student"] { --cl-mode: #a9a6f2; --cl-mode-ink: #1d1b4a; --cl-mode-glow: rgba(169, 166, 242, 0.35); }
+.layout[data-mode="volunteer"] { --cl-mode: #e3a866; --cl-mode-ink: #3a2208; --cl-mode-glow: rgba(227, 168, 102, 0.35); }
+.layout[data-mode="admin"], .layout[data-mode="loading"] { --cl-mode: #cfe3f5; --cl-mode-ink: #14181e; --cl-mode-glow: rgba(207, 227, 245, 0.3); }
+
+@media (min-width: 768px) {
+  /* Bigger glass sidebar, softly tinted by the mode colour */
+  .sidebar { width: 290px; margin: 1rem 0 1rem 1rem; top: 1rem; height: calc(100vh - 2rem); padding: 1.75rem 1.25rem 1.25rem; border-radius: 28px; background: radial-gradient(120% 60% at 0% 0%, var(--cl-mode-glow), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.06)); border: 1px solid rgba(255, 255, 255, 0.22); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35); backdrop-filter: blur(24px) saturate(150%); -webkit-backdrop-filter: blur(24px) saturate(150%); color: #f5f1ea; }
+
+  .brand { color: #f5f1ea; margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px solid rgba(255, 255, 255, 0.14); width: 100%; }
+  .brandName { margin: 0.25rem 0 0; padding-left: 0.25rem; font-family: var(--font-display), sans-serif; font-size: 1.125rem; font-weight: 500; letter-spacing: 0.35em; text-transform: uppercase; }
+
+  /* Mode pill: lavender = Student, gold = Volunteer */
+  .sidebar .modePill { display: inline-flex; align-items: center; gap: 0.5rem; margin: 0 0 1rem 0.25rem; padding: 0.35rem 0.95rem; background: var(--cl-mode); color: var(--cl-mode-ink); font-size: 0.75rem; letter-spacing: 0.1em; box-shadow: 0 6px 18px var(--cl-mode-glow); }
+  .sidebar .modePill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--cl-mode-ink); opacity: 0.7; }
+
+  .nav { gap: 0.3rem; }
+  .navItem { padding: 0.85rem 1.15rem; border-radius: 999px; font-size: 1rem; color: #e9e4dc; transition: background-color 0.2s, color 0.2s, transform 0.2s; }
+  a.navItem:hover { background-color: rgba(255, 255, 255, 0.12); color: #ffffff; transform: translateX(3px); }
+  /* Active page: same gradient as the buttons on the login pages */
+  .navItemActive, a.navItemActive:hover { background: linear-gradient(100deg, #f6ddba 0%, #f5f1ea 50%, #cfe3f5 100%); color: #14181e; font-weight: 600; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); transform: none; }
+
+  .logout { margin-top: auto; padding: 0.75rem 1.15rem; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 999px; text-align: center; font-size: 0.9375rem; font-weight: 600; color: #f5f1ea; }
+  .logout:hover { background: rgba(255, 255, 255, 0.12); color: #ffffff; text-decoration: none; }
+  .navItem:focus-visible, .logout:focus-visible, .brand:focus-visible { outline-color: #ffffff; }
+
+  /* Light panel on the right: pages inside it stay exactly as they are */
+  .main { position: relative; margin: 1rem; min-height: calc(100vh - 2rem); border-radius: 28px; background-color: var(--surface-2); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35); }
+  .modeStrip { display: block; position: absolute; top: 0; left: 0; right: 0; z-index: 1; height: 5px; margin: 0 2rem; border-radius: 0 0 6px 6px; background: var(--cl-mode); }
+  .header { border-radius: 28px 28px 0 0; }
+  .header .modePill { background: var(--cl-mode); color: var(--cl-mode-ink); }
+
+  /* Slightly bigger header and page content */
+  .header { padding: 1.75rem 2.25rem; }
+  .title { font-size: 1.625rem; }
+  .user { font-size: 1rem; }
+  .avatar { width: 42px; height: 42px; font-size: 0.875rem; }
+  .body { zoom: 1.1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navItem { transition: none; }
+}
+
+/* =====================================================================
+   Collapsible sidebar (desktop): full width ↔ icon rail
+   ===================================================================== */
+.sidebarTop { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
+.brandShort { display: none; }
+.collapseButton { display: none; }
+.navIcon { flex-shrink: 0; }
+.navLabel { min-width: 0; }
+
+@media (min-width: 768px) {
+  .sidebar { transition: width 0.25s ease, padding 0.25s ease; }
+  .sidebarTop { margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px solid rgba(255, 255, 255, 0.14); }
+  .sidebarTop .brand { margin: 0; padding: 0; border: 0; width: auto; }
+  .collapseButton { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.25); background: rgba(255, 255, 255, 0.08); color: #f5f1ea; cursor: pointer; }
+  .collapseButton:hover { background: rgba(255, 255, 255, 0.18); }
+  .collapseButton:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }
+  .navItem { display: flex; align-items: center; gap: 0.75rem; white-space: nowrap; }
+
+  /* Collapsed: icons only */
+  .layout[data-collapsed="true"] .sidebar { width: 88px; padding-left: 0.75rem; padding-right: 0.75rem; align-items: center; }
+  .layout[data-collapsed="true"] .sidebarTop { flex-direction: column; align-items: center; width: 100%; }
+  .layout[data-collapsed="true"] .brandName,
+  .layout[data-collapsed="true"] .navLabel,
+  .layout[data-collapsed="true"] .sidebar .modePill { display: none; }
+  .layout[data-collapsed="true"] .brandShort { display: block; font-family: var(--font-display), sans-serif; font-size: 1.125rem; font-weight: 500; letter-spacing: 0.15em; }
+  .layout[data-collapsed="true"] .nav { width: 100%; align-items: center; }
+  .layout[data-collapsed="true"] .navItem { justify-content: center; width: 52px; height: 52px; padding: 0; }
+  .layout[data-collapsed="true"] a.navItem:hover { transform: none; }
+  .layout[data-collapsed="true"] .logout { width: 100%; padding: 0.6rem 0; font-size: 0.75rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar { transition: none; }
+}
