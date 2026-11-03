@@ -3,6 +3,7 @@
 // Volunteer Skills & Availability page (Epic 1 – User Story 2)
 // A volunteer picks subject tags and the hours they're free each week.
 // Saved with one database function so skills and slots are stored together.
+// Volunteers can also add their own subject if it isn't in the list.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -25,7 +26,30 @@ function toTime(hour: number) {
   return `${String(hour).padStart(2, "0")}:00`;
 }
 
+const MAX_SUBJECT_LENGTH = 40;
+
+// Tidies a typed subject: trims spaces and reuses the list's spelling if it already exists,
+// so "database" and "Database" count as the same subject.
+export function normaliseSubject(input: string, existing: string[]) {
+  const cleaned = input.trim().replace(/\s+/g, " ");
+  const match = existing.find((s) => s.toLowerCase() === cleaned.toLowerCase());
+  return match ?? cleaned;
+}
+
 // Kept separate so they can be unit tested later
+export function validateNewSubject(input: string, skills: string[]) {
+  const cleaned = input.trim();
+  if (cleaned === "") return "Type a subject first.";
+  if (cleaned.length > MAX_SUBJECT_LENGTH) return `Keep it under ${MAX_SUBJECT_LENGTH} characters.`;
+  if (skills.some((s) => s.toLowerCase() === cleaned.toLowerCase())) return "You've already added this subject.";
+  return "";
+}
+
+// A short "fingerprint" of the choices, used to tell if anything changed since the last save
+export function setupSignature(skills: string[], cells: Set<string>) {
+  return JSON.stringify([[...skills].sort(), [...cells].sort()]);
+}
+
 export function validateVolunteerSetup(skills: string[], cells: Set<string>) {
   const errors: { skills?: string; slots?: string } = {};
   if (skills.length === 0) {
@@ -63,6 +87,9 @@ export default function VolunteerSetupPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [serverError, setServerError] = useState("");
+  const [newSubject, setNewSubject] = useState("");
+  const [subjectError, setSubjectError] = useState("");
+  const [savedSignature, setSavedSignature] = useState("");
 
   // Load the volunteer's saved skills and schedule
   useEffect(() => {
@@ -90,6 +117,7 @@ export default function VolunteerSetupPage() {
         for (let h = start; h < end; h++) saved.add(cellKey(row.day_of_week, h));
       });
       setCells(saved);
+      setSavedSignature(setupSignature(vp?.skills ?? [], saved));
     }
 
     load();
@@ -100,6 +128,16 @@ export default function VolunteerSetupPage() {
     setSkills((current) =>
       current.includes(subject) ? current.filter((s) => s !== subject) : [...current, subject]
     );
+  }
+
+  function addSubject() {
+    const problem = validateNewSubject(newSubject, skills);
+    setSubjectError(problem);
+    if (problem) return;
+
+    setMessage("");
+    setSkills((current) => [...current, normaliseSubject(newSubject, [...SUBJECTS])]);
+    setNewSubject("");
   }
 
   function toggleCell(day: Day, hour: number) {
@@ -119,7 +157,16 @@ export default function VolunteerSetupPage() {
 
     const foundErrors = validateVolunteerSetup(skills, cells);
     setErrors(foundErrors);
-    if (Object.keys(foundErrors).length > 0) return;
+    if (Object.keys(foundErrors).length > 0) {
+      setServerError("Please fix the highlighted parts above.");
+      return;
+    }
+
+    // Nothing changed since the last save: no need to call the database
+    if (setupSignature(skills, cells) === savedSignature) {
+      setMessage("No changes to save. Your skills and availability are already up to date.");
+      return;
+    }
 
     setSaving(true);
     const { error } = await supabase.rpc("save_volunteer_setup", {
@@ -132,8 +179,13 @@ export default function VolunteerSetupPage() {
       setServerError("We couldn't save your availability. Please try again.");
       return;
     }
+    setSavedSignature(setupSignature(skills, cells));
     setMessage("Saved. Students can now find you in the volunteer list.");
   }
+
+  // The list's subjects first, then any the volunteer added themselves
+  const customSkills = skills.filter((s) => !(SUBJECTS as readonly string[]).includes(s));
+  const allSubjects = [...SUBJECTS, ...customSkills];
 
   if (!profile || isVolunteer === null) {
     // Keep the layout on screen while the saved skills and schedule load (returning nothing blanked the page)
@@ -157,13 +209,10 @@ export default function VolunteerSetupPage() {
                 help will see you when your subjects and times match.
               </p>
 
-              {message && <p className={styles.success}>{message}</p>}
-              {serverError && <p className={styles.serverError}>{serverError}</p>}
-
               <section className={styles.section}>
                 <h2 className={styles.sectionTitle}>Subjects you can help with</h2>
                 <div className={styles.tags}>
-                  {SUBJECTS.map((subject) => {
+                  {allSubjects.map((subject) => {
                     const selected = skills.includes(subject);
                     return (
                       <button
@@ -178,6 +227,37 @@ export default function VolunteerSetupPage() {
                     );
                   })}
                 </div>
+
+                {/* Add a subject that isn't in the list */}
+                <div className={styles.addRow}>
+                  <label htmlFor="new-subject" className={styles.srOnly}>
+                    Add another subject
+                  </label>
+                  <input
+                    id="new-subject"
+                    value={newSubject}
+                    maxLength={MAX_SUBJECT_LENGTH + 10}
+                    placeholder="Add another subject, e.g. Accounting"
+                    onChange={(e) => {
+                      setNewSubject(e.target.value);
+                      setSubjectError("");
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addSubject();
+                      }
+                    }}
+                    className={subjectError ? `${styles.addInput} ${styles.addInputError}` : styles.addInput}
+                  />
+                  <button type="button" onClick={addSubject} className={styles.addButton}>
+                    + Add
+                  </button>
+                </div>
+                {subjectError && <p className={styles.error}>{subjectError}</p>}
+                {customSkills.length > 0 && (
+                  <p className={styles.hint}>Click a subject again to remove it.</p>
+                )}
                 {errors.skills && <p className={styles.error}>{errors.skills}</p>}
               </section>
 
@@ -197,7 +277,9 @@ export default function VolunteerSetupPage() {
                     <tbody>
                       {HOURS.map((hour) => (
                         <tr key={hour}>
-                          <th className={styles.timeLabel}>{toTime(hour)}</th>
+                          <th className={styles.timeLabel}>
+                            {toTime(hour)}–{toTime(hour + 1)}
+                          </th>
                           {DAYS.map((day) => {
                             const selected = cells.has(cellKey(day, hour));
                             return (
@@ -220,9 +302,16 @@ export default function VolunteerSetupPage() {
                 {errors.slots && <p className={styles.error}>{errors.slots}</p>}
               </section>
 
-              <button type="button" onClick={handleSave} className={styles.submit} disabled={saving}>
-                {saving ? "Saving..." : "Save availability"}
-              </button>
+              {/* Save bar stays at the bottom of the screen, so the result is always visible */}
+              <div className={styles.saveBar}>
+                <button type="button" onClick={handleSave} className={styles.submit} disabled={saving}>
+                  {saving ? "Saving..." : "Save availability"}
+                </button>
+                <div role="status" aria-live="polite" className={styles.saveStatus}>
+                  {message && <p className={styles.success}>✓ {message}</p>}
+                  {serverError && <p className={styles.serverError}>{serverError}</p>}
+                </div>
+              </div>
             </>
           )}
           </div>
