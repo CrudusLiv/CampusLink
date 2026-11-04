@@ -105,7 +105,7 @@
   background-color: #111827;
   color: #ffffff;
   border: none;
-  border-radius: 6px;
+  border-radius: 9999px;
   font-weight: 600;
   font-size: 1rem;
   cursor: pointer;
@@ -139,9 +139,10 @@
 
 .sectionHeading {
   font-size: 1.125rem;
-  font-weight: 700;
+  font-weight: 500;
   margin: 0;
   color: #111827;
+  font-family: var(--font-display), var(--font-geist-sans), sans-serif;
 }
 
 .sectionDesc {
@@ -184,7 +185,7 @@
 .matchHeading { color: #3f3f46; font-weight: 700; }
 .matchMessage { color: #71717a; line-height: 1.5; }
 .matchError { color: #991b1b; line-height: 1.4; }
-.matchCard { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border: 1px solid #d4d4d8; border-radius: 0.5rem; background: #fff; }
+.matchCard { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border: 1px solid #d4d4d8; border-radius: 1rem; background: #fff; }
 .matchAvatar, .matchAvatarFallback { width: 40px; height: 40px; flex: 0 0 40px; border: 1px solid #d4d4d8; border-radius: 50%; background: #f4f4f5; object-fit: cover; }
 .matchAvatarFallback { display: grid; place-items: center; color: #3f3f46; font-size: 0.75rem; font-weight: 700; }
 .matchDetails { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 0.2rem; color: #111827; font-size: 0.8125rem; }

@@ -13,7 +13,8 @@ const Stars = ({ value }: { value: number }) => (
   <span className={styles.starsStatic} role="img" aria-label={`${value} out of 5 stars`}>{"★".repeat(value)}{"☆".repeat(5 - value)}</span>
 );
 
-export default function SessionDetail({ sessionId }: { sessionId: string }) {
+export default function SessionDetail({ sessionId, backTo = "sessions" }: { sessionId: string; backTo?: "sessions" | "history" }) {
+  const back = backTo === "history" ? { href: "/support-history", label: "Support History" } : { href: "/sessions", label: "My Support Sessions" };
   const [session, setSession] = useState<SessionView | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -72,7 +73,7 @@ export default function SessionDetail({ sessionId }: { sessionId: string }) {
   if (loadFailed || !session) return (
     <main className={styles.content}>
       <p className={styles.message}>{loadFailed ? "We could not load this session. Please try again." : "We could not find this session."}</p>
-      <Link className={styles.backLink} href="/sessions">← Back to My Support Sessions</Link>
+      <Link className={styles.backLink} href={back.href}>← Back to {back.label}</Link>
     </main>
   );
 
@@ -86,7 +87,7 @@ export default function SessionDetail({ sessionId }: { sessionId: string }) {
 
   return (
     <main className={styles.content}>
-      <p className={styles.backRow}><Link className={styles.backLink} href="/sessions">← My Support Sessions</Link></p>
+      <p className={styles.backRow}><Link className={styles.backLink} href={back.href}>← {back.label}</Link></p>
 
       <section className={styles.card} aria-label="Session details">
         <div className={styles.summary}>

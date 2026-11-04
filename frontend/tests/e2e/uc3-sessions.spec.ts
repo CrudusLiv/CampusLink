@@ -9,10 +9,13 @@ test.describe.configure({ mode: 'serial' });
 
 let page: Page;
 let accessToken = '';
+let userId = '';
 
 test.beforeAll(async ({ browser }) => {
   page = await browser.newPage();
-  accessToken = (await signIn(page)).access_token;
+  const session = await signIn(page);
+  accessToken = session.access_token;
+  userId = session.user.id;
 });
 test.afterAll(async () => page.close());
 
@@ -42,6 +45,8 @@ test('TCUC3_8 accepting a request books the session at the requested time; a bus
   // 8b: Accept books the session straight away, at the time the requester chose, without a Schedule step
   await free.getByRole('button', { name: 'Accept' }).click();
   await expect(free).toHaveCount(0, { timeout: 60_000 });
+  // My Support Sessions is role-aware: the volunteer who accepted sees the session in the Volunteer view
+  await page.evaluate((k) => sessionStorage.setItem(k, 'volunteer'), `campuslink:dashboard-view:${userId}`);
   await page.goto('/sessions');
   await settled();
   const booked = page.getByText('Sessions test: Java help').first();

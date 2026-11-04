@@ -2,10 +2,9 @@
 
 // "Become a volunteer" card for the profile page (Epic 1 – User Story 6).
 // Not a volunteer yet → shows a button that opens the guidelines pop-up.
-// Already a volunteer → shows a link to edit skills & availability.
+// Already a volunteer → shows the Student/Volunteer dashboard switch (skills & availability is in the volunteer menu).
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useVolunteerDashboardView } from "@/components/dashboard/VolunteerViewContext";
 import { supabase } from "@/lib/supabaseClient";
@@ -81,9 +80,6 @@ export default function BecomeVolunteerCard({ userId }: { userId: string }) {
             >Volunteer</button>
           </div>
         </section>}
-        <Link href="/volunteer/setup" className={styles.secondaryButton}>
-          Edit skills &amp; availability
-        </Link>
       </div>
     );
   }
