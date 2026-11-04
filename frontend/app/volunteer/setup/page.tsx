@@ -11,20 +11,8 @@ import AppShell, { AppShellLoading } from "@/components/layout/AppShell";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { SUBJECTS, DAYS, Day } from "@/lib/categories";
+import { HOURS, cellKey, cellsToSlots, isDayFull, toTime, toggleDay, weekSummary, weekdayHours } from "@/lib/availability-grid";
 import styles from "./setup.module.css";
-
-// One-hour slots from 08:00 to 21:00
-const HOURS = Array.from({ length: 13 }, (_, i) => 8 + i);
-
-export type Slot = { day_of_week: Day; start_time: string; end_time: string };
-
-function cellKey(day: Day, hour: number) {
-  return `${day}-${hour}`;
-}
-
-function toTime(hour: number) {
-  return `${String(hour).padStart(2, "0")}:00`;
-}
 
 const MAX_SUBJECT_LENGTH = 40;
 
@@ -59,23 +47,6 @@ export function validateVolunteerSetup(skills: string[], cells: Set<string>) {
     errors.slots = "Choose at least one time slot.";
   }
   return errors;
-}
-
-// Turns selected hour cells into time ranges, e.g. Mon 10, 11 → Mon 10:00–12:00
-export function cellsToSlots(cells: Set<string>): Slot[] {
-  const slots: Slot[] = [];
-  for (const day of DAYS) {
-    const hours = HOURS.filter((h) => cells.has(cellKey(day, h)));
-    let i = 0;
-    while (i < hours.length) {
-      const start = hours[i];
-      // Walk forward while the hours are back-to-back
-      while (i + 1 < hours.length && hours[i + 1] === hours[i] + 1) i++;
-      slots.push({ day_of_week: day, start_time: toTime(start), end_time: toTime(hours[i] + 1) });
-      i++;
-    }
-  }
-  return slots;
 }
 
 export default function VolunteerSetupPage() {
@@ -151,6 +122,22 @@ export default function VolunteerSetupPage() {
     });
   }
 
+  // Whole-day and preset shortcuts, so nobody has to click up to 91 separate hours
+  function toggleWholeDay(day: Day) {
+    setMessage("");
+    setCells((current) => toggleDay(current, day));
+  }
+
+  function selectWeekdays() {
+    setMessage("");
+    setCells(weekdayHours());
+  }
+
+  function clearAllHours() {
+    setMessage("");
+    setCells(new Set());
+  }
+
   async function handleSave() {
     setMessage("");
     setServerError("");
@@ -205,12 +192,15 @@ export default function VolunteerSetupPage() {
           ) : (
             <>
               <p className={styles.subtitle}>
-                Pick what you can help with and when you're free each week. Students searching for
+                Pick what you can help with and when you&apos;re free each week. Students searching for
                 help will see you when your subjects and times match.
               </p>
 
               <section className={styles.section}>
                 <h2 className={styles.sectionTitle}>Subjects you can help with</h2>
+                <p className={styles.hint}>
+                  {skills.length === 0 ? "None chosen yet." : `${skills.length} chosen.`} Click a subject to add or remove it.
+                </p>
                 <div className={styles.tags}>
                   {allSubjects.map((subject) => {
                     const selected = skills.includes(subject);
@@ -222,6 +212,7 @@ export default function VolunteerSetupPage() {
                         aria-pressed={selected}
                         className={selected ? `${styles.tag} ${styles.tagSelected}` : styles.tag}
                       >
+                        {selected && <span aria-hidden="true">✓ </span>}
                         {subject}
                       </button>
                     );
@@ -255,22 +246,39 @@ export default function VolunteerSetupPage() {
                   </button>
                 </div>
                 {subjectError && <p className={styles.error}>{subjectError}</p>}
-                {customSkills.length > 0 && (
-                  <p className={styles.hint}>Click a subject again to remove it.</p>
-                )}
                 {errors.skills && <p className={styles.error}>{errors.skills}</p>}
               </section>
 
               <section className={styles.section}>
                 <h2 className={styles.sectionTitle}>Weekly availability</h2>
-                <p className={styles.hint}>Click the hours you're free. Click again to remove.</p>
+                <p className={styles.hint}>
+                  Click the hours you&apos;re free, or click a day name to select the whole day. Click again to remove.
+                </p>
+                <div className={styles.quick}>
+                  <button type="button" onClick={selectWeekdays} className={styles.quickButton}>
+                    Weekdays 09:00–17:00
+                  </button>
+                  <button type="button" onClick={clearAllHours} className={styles.quickButton} disabled={cells.size === 0}>
+                    Clear all
+                  </button>
+                </div>
                 <div className={styles.gridWrap}>
                   <table className={styles.grid}>
                     <thead>
                       <tr>
                         <th className={styles.timeHead}></th>
                         {DAYS.map((day) => (
-                          <th key={day}>{day}</th>
+                          <th key={day}>
+                            <button
+                              type="button"
+                              onClick={() => toggleWholeDay(day)}
+                              aria-pressed={isDayFull(cells, day)}
+                              aria-label={`${isDayFull(cells, day) ? "Clear" : "Select"} all of ${day}`}
+                              className={styles.dayButton}
+                            >
+                              {day}
+                            </button>
+                          </th>
                         ))}
                       </tr>
                     </thead>
@@ -278,7 +286,8 @@ export default function VolunteerSetupPage() {
                       {HOURS.map((hour) => (
                         <tr key={hour}>
                           <th className={styles.timeLabel}>
-                            {toTime(hour)}–{toTime(hour + 1)}
+                            {toTime(hour)}
+                            <span className={styles.rangeEnd}>–{toTime(hour + 1)}</span>
                           </th>
                           {DAYS.map((day) => {
                             const selected = cells.has(cellKey(day, hour));
@@ -290,7 +299,9 @@ export default function VolunteerSetupPage() {
                                   aria-pressed={selected}
                                   aria-label={`${day} ${toTime(hour)} to ${toTime(hour + 1)}`}
                                   className={selected ? `${styles.cell} ${styles.cellSelected}` : styles.cell}
-                                />
+                                >
+                                  <span aria-hidden="true">{selected ? "✓" : ""}</span>
+                                </button>
                               </td>
                             );
                           })}
@@ -300,6 +311,18 @@ export default function VolunteerSetupPage() {
                   </table>
                 </div>
                 {errors.slots && <p className={styles.error}>{errors.slots}</p>}
+                <div className={styles.summary} aria-live="polite">
+                  {cells.size === 0 ? (
+                    <p>No hours chosen yet.</p>
+                  ) : (
+                    <>
+                      <p><strong>You&apos;re free {cells.size} {cells.size === 1 ? "hour" : "hours"} a week:</strong></p>
+                      <ul className={styles.summaryList}>
+                        {weekSummary(cells).map((line) => <li key={line}>{line}</li>)}
+                      </ul>
+                    </>
+                  )}
+                </div>
               </section>
 
               {/* Save bar stays at the bottom of the screen, so the result is always visible */}
@@ -308,6 +331,9 @@ export default function VolunteerSetupPage() {
                   {saving ? "Saving..." : "Save availability"}
                 </button>
                 <div role="status" aria-live="polite" className={styles.saveStatus}>
+                  {!message && !serverError && savedSignature !== "" && setupSignature(skills, cells) !== savedSignature && (
+                    <p className={styles.unsaved}>You have unsaved changes.</p>
+                  )}
                   {message && <p className={styles.success}>✓ {message}</p>}
                   {serverError && <p className={styles.serverError}>{serverError}</p>}
                 </div>

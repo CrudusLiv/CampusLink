@@ -107,11 +107,14 @@ export default function SupportHistoryTable() {
                 <td>{formatDate(row.requested_date)}</td>
                 <td>
                   {row.rating ? (
-                    <span className={styles.ratingStars} aria-label={`Your rating: ${row.rating} out of 5`}>
-                      {Array.from({ length: 5 }, (_, index) => index < row.rating! ? "★" : "☆").join("")}
-                    </span>
+                    <>
+                      <span className={styles.ratingStars} aria-label={`Your rating: ${row.rating} out of 5`}>
+                        {Array.from({ length: 5 }, (_, index) => index < row.rating! ? "★" : "☆").join("")}
+                      </span>
+                      {row.session_id && <Link className={styles.rateLink} href={`/sessions/${row.session_id}?from=history`}> View feedback</Link>}
+                    </>
                   ) : row.status === "Completed" && row.session_id ? (
-                    <Link className={styles.rateLink} href={`/sessions/${row.session_id}`}>Rate this session</Link>
+                    <Link className={styles.rateLink} href={`/sessions/${row.session_id}?from=history`}>Rate this session</Link>
                   ) : <span aria-label="No rating">—</span>}
                 </td>
                 <td><RequestStatusBadge status={row.status} /></td>

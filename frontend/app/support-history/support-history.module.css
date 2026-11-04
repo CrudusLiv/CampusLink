@@ -17,7 +17,7 @@
 .ratingStars { white-space: nowrap; color: #374151; letter-spacing: 0.08em; }
 .rateLink { color: #1d4ed8; font-size: 0.875rem; font-weight: 600; white-space: nowrap; }
 .rateLink:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
-.message, .error { margin-top: 1rem; padding: 1rem 1.25rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; background: #fff; color: #52525b; font-size: 0.875rem; }
+.message, .error { margin-top: 1rem; padding: 1rem 1.25rem; border: 1px solid #e5e7eb; border-radius: 1rem; background: #fff; color: #52525b; font-size: 0.875rem; }
 .error { border-color: #fca5a5; background: #fef2f2; color: #991b1b; }
 .ratingNote { margin: 0.75rem 0 0; color: #6b7280; font-size: 0.75rem; }
 @media (min-width: 768px) { .content { padding: 1.5rem 2rem 3rem; } .table th, .table td { padding: 0.75rem 1rem; } }

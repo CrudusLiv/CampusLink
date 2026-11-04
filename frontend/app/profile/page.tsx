@@ -119,11 +119,11 @@ export default function ProfilePage() {
           <div className={styles.lockedRow}>
             <div className={styles.field}>
               <span className={styles.label}>Student ID</span>
-              <input value={profile.student_id} disabled className={styles.input} />
+              <input value={profile.student_id} disabled aria-label="Student ID (cannot be changed)" className={styles.input} />
             </div>
             <div className={styles.field}>
               <span className={styles.label}>University email</span>
-              <input value={profile.email} disabled className={styles.input} />
+              <input value={profile.email} disabled aria-label="University email (cannot be changed)" className={styles.input} />
             </div>
           </div>
           <p className={styles.lockNote}>

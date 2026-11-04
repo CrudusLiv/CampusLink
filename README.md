@@ -10,12 +10,12 @@ Built for **BIT216 Software Engineering Principles** as a three-person team proj
 |---|---|
 | Register, log in (email + password with an emailed code, or Microsoft), reset password | Working |
 | Profile: view and edit | Working |
-| Become a volunteer, set skills and weekly availability | Working |
+| Become a volunteer, set skills and weekly availability (own subjects can be added; click a day name or use "Weekdays 09:00–17:00" to fill the week; a summary shows what students will see) | Working |
 | Ask for support: submit, edit and cancel requests; browse volunteers | Working |
 | Volunteer: see incoming requests, accept or decline | Working |
 | **Accepting a request books the session** at the time the requester chose; Accept is blocked when the volunteer is not free then | Working |
 | **My Support Sessions**: upcoming list, soonest first, "Within 24h" highlight, empty/loading/error states, and a Past sessions list (completed, cancelled, time passed) | Working |
-| Cancel a session (at least 24 hours before the start; the request is cancelled with it and the other person gets an in-app notice they can dismiss) | Working (needs migrations `20261021000100_session_cancel_feedback.sql`, `20261027000100_cancel_session_24h.sql` and `20261028000100_cancel_notification.sql`) |
+| Cancel a session (at least 24 hours before the start; the request is cancelled with it and the other person gets an in-app notice in the notification bell) | Working (needs migrations `20261021000100_session_cancel_feedback.sql`, `20261027000100_cancel_session_24h.sql` and `20261028000100_cancel_notification.sql`) |
 | Unified in-app notifications for pending requests, volunteer responses, pending cancellations and session cancellations, with unread count and realtime updates | Working (needs migration `20261029000300_realtime_notifications.sql`) |
 | The volunteer marks a session completed after it starts; the Help Seeker rates it 1 to 5 stars with an optional comment (once, read-only after) | Working (same migrations) |
 | The volunteer saves where or how to join a session (a meeting link or a place) on the session page, and can keep it as the default for future bookings; the Help Seeker sees it | Working (needs migration `20261029000200_session_join_details.sql`) |
@@ -142,7 +142,7 @@ If someone applied a migration by pasting it into the SQL editor, Supabase will 
 - A session is created from an **accepted** support request. Normally it is booked automatically when the volunteer clicks Accept, at the time the requester chose. If that fails, the volunteer sees the reason and the request stays Accepted.
 - Accept is only offered when the requested hour fits inside the volunteer's weekly availability (a session is always **one hour**, read as **Asia/Kuala_Lumpur** time). Everything is stored in UTC.
 - Neither person can be booked at overlapping times, across all their requests. A request can have only one scheduled session at a time.
-- **Cancel:** either person, only while the session is Scheduled and at least **24 hours** before it starts. The request is cancelled with it, and the other person gets a notice (table `notification`) shown at the top of My Support Sessions. No email is sent.
+- **Cancel:** either person, only while the session is Scheduled and at least **24 hours** before it starts. The request is cancelled with it, and the other person gets a notice (table `notification`) that appears in the notification bell in the header (red, with who cancelled, which session and when). No email is sent.
 - **Complete:** only the volunteer, and only once the session has started. This also completes the request.
 - **Feedback:** only the Help Seeker, only on a Completed session, once, and it cannot be edited afterwards.
 - These rules are enforced **in the database** (a trigger plus RLS policies), so they hold even if someone skips the app and talks to Supabase directly. The API turns database errors into clear messages (409 "That time is no longer available, please pick a different time").

@@ -19,7 +19,7 @@
   max-width: 560px;
   background-color: #ffffff;
   border: 1px solid #e4e4e7;
-  border-radius: 8px;
+  border-radius: 1rem;
   padding: 2rem;
 }
 
@@ -128,7 +128,7 @@
   background-color: #111827;
   color: #ffffff;
   border: none;
-  border-radius: 6px;
+  border-radius: 9999px;
   font-weight: 600;
   font-size: 0.875rem;
   cursor: pointer;

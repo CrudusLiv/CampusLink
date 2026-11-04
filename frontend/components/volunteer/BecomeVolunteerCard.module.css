@@ -8,13 +8,14 @@
   padding: 1.25rem 1.5rem;
   background-color: #ffffff;
   border: 1px solid #e4e4e7;
-  border-radius: 8px;
+  border-radius: 1rem;
 }
 
 .title {
   margin: 0 0 0.25rem 0;
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 500;
+  font-family: var(--font-display), var(--font-geist-sans), sans-serif;
 }
 
 .text {
@@ -26,7 +27,7 @@
 .primaryButton,
 .secondaryButton {
   padding: 0.625rem 1rem;
-  border-radius: 6px;
+  border-radius: 9999px;
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;

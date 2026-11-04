@@ -492,7 +492,8 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
           <div className={styles.fieldGroup}>
             <input 
               type="text" 
-              placeholder="Request Title" 
+              placeholder="Request Title"
+              aria-label="Request title"
               className={styles.input}
               value={title}
               onChange={(e) => { setTitle(e.target.value); clearValidationError(); }}
@@ -503,7 +504,8 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
 
           <div className={styles.fieldGroup}>
             <textarea 
-              placeholder="Description" 
+              placeholder="Description"
+              aria-label="Description"
               className={styles.textarea} 
               rows={6}
               value={description}
@@ -517,7 +519,8 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
             <div className={styles.fieldGroup}>
             <div className={styles.dateInputWrap}>
             <input
-              type="date" 
+              type="date"
+              aria-label="Preferred date"
               className={`${styles.input} ${date ? styles.dateInputWithLabel : ""}`}
               value={date}
               min={localDateValue(new Date())}
@@ -531,6 +534,7 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
             <div className={styles.fieldGroup}>
               <input
                 type="time"
+                aria-label="Preferred time"
                 className={styles.input}
                 value={time}
                 onChange={(e) => { clearAutoMatches(); setTime(e.target.value); clearValidationError(); }}
