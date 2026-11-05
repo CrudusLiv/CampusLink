@@ -4,6 +4,7 @@ const authenticate = vi.fn();
 const insert = vi.fn();
 const maybeSingle = vi.fn();
 const from = vi.fn();
+const rpc = vi.fn();
 
 vi.mock("@/lib/sessions/api", async (original) => ({
   ...(await original<typeof import("@/lib/sessions/api")>()),
@@ -60,13 +61,14 @@ beforeEach(() => {
   };
   availabilityQuery.select.mockReturnValue(availabilityQuery);
   availabilityQuery.eq.mockReturnValue(availabilityQuery);
+  rpc.mockResolvedValue({ data: [], error: null });
   from.mockImplementation((table: string) => {
     if (table === "volunteer_profile") return profileQuery;
     if (table === "availability") return availabilityQuery;
     if (table === "support_request") return { insert };
     throw new Error(`Unexpected table: ${table}`);
   });
-  authenticate.mockResolvedValue({ me: { id: ME }, db: { from } });
+  authenticate.mockResolvedValue({ me: { id: ME }, db: { from, rpc } });
   insert.mockResolvedValue({ error: null });
 });
 
@@ -158,6 +160,8 @@ describe("POST /api/support-requests", () => {
     const soon = new Date(Date.now() + 8 * 60 * 60 * 1000 + 20 * 60 * 1000);
     const soonDate = `${soon.getUTCFullYear()}-${String(soon.getUTCMonth() + 1).padStart(2, "0")}-${String(soon.getUTCDate()).padStart(2, "0")}`;
     const soonTime = `${String(soon.getUTCHours()).padStart(2, "0")}:${String(soon.getUTCMinutes()).padStart(2, "0")}`;
+    const soonWeekday = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "short" }).format(soon);
+    availabilityResult = { data: [{ day_of_week: soonWeekday, start_time: "00:00", end_time: "23:59" }], error: null };
     const soonResponse = await post({
       ...BODY,
       requested_date: soonDate,
