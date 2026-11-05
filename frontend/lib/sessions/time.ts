@@ -3,7 +3,7 @@ const DAY_MS = 86_400_000;
 
 const fmt = (opts: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-MY', { timeZone: TZ, ...opts });
 const dateFmt = fmt({ weekday: 'short', day: 'numeric', month: 'short' });
-const timeFmt = fmt({ hour: 'numeric', minute: '2-digit', hour12: true });
+const timeFmt = fmt({ hour: '2-digit', minute: '2-digit', hour12: true });
 const keyFmt = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }); // YYYY-MM-DD
 
 export const formatDate = (iso: string) => dateFmt.format(new Date(iso));
