@@ -11,7 +11,7 @@ export default async function AskForSupportPage({ searchParams }: { searchParams
   const { from } = await searchParams;
   return (
     <AppShell title="Submit Requests">
-      <main className={s.content}>
+      <main className={`${s.content} ${s.askSupportContent}`}>
         <p>
           <Link className={s.backLink} href={from === "volunteer-lists" ? "/volunteer-lists" : "/dashboard"}>
             {from === "volunteer-lists" ? "← Back to Volunteer Lists" : "← Back to Dashboard"}

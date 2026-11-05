@@ -4,6 +4,7 @@
 .backLink { display: inline-flex; align-items: center; min-height: 2.5rem; color: #3f3f46; font-size: 1rem; font-weight: 600; text-decoration: none; }
 .backLink:hover { text-decoration: underline; }
 .content { max-width: 960px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+.askSupportContent { max-width: 1120px; }
 .sectionTitle { font-size: 1.125rem; font-weight: 500; margin: 0 0 1rem; font-family: var(--font-display), var(--font-geist-sans), sans-serif; }
 
 @media (min-width: 768px) {

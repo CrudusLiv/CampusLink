@@ -8,6 +8,12 @@ import { klDateKey, TZ } from "@/lib/sessions/time";
 const SELF_VOLUNTEER_MESSAGE = "You cannot select yourself as a volunteer.";
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
+function formatMinuteOfDay(value: number) {
+  const normalized = ((value % 1440) + 1440) % 1440;
+  const date = new Date(Date.UTC(2000, 0, 1, Math.floor(normalized / 60), normalized % 60));
+  return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", hour: "2-digit", minute: "2-digit", hour12: true }).format(date);
+}
+
 function requestedDateTime(date: string, time: string) {
   const normalizedTime = time.length === 5 ? `${time}:00` : time;
   return new Date(`${date}T${normalizedTime}+08:00`);
@@ -39,10 +45,6 @@ export async function POST(req: Request) {
   if (input.data.requested_date < klDateKey(new Date().toISOString())) {
     return fieldValidation("requested_date", "Choose today or a future date.");
   }
-  if (requestedAt.getTime() < Date.now() + ONE_HOUR_MS) {
-    return fieldValidation("requested_time", "Choose a time at least 1 hour from now.");
-  }
-
   const [{ data: volunteer, error: volunteerError }, { data: availability, error: availabilityError }] = await Promise.all([
     auth.db.from("volunteer_profile")
       .select("skills, is_volunteer")
@@ -77,6 +79,43 @@ export async function POST(req: Request) {
   );
   if (!timeIsAvailable) {
     return fieldValidation("requested_time", "The selected volunteer is not available at this time.");
+  }
+
+  const { data: acceptedRequests, error: acceptedRequestsError } = await auth.db.rpc("get_volunteer_accepted_times", {
+    p_volunteer_id: input.data.volunteer_id,
+    p_requested_date: input.data.requested_date,
+  });
+
+  if (acceptedRequestsError) {
+    console.error("POST /api/support-requests conflict lookup failed:", acceptedRequestsError.code);
+    return fail(500, "unknown", "We could not verify the selected volunteer's schedule");
+  }
+
+  const requestedStart = minutes(requestedTime);
+  const requestedEnd = requestedStart + 60;
+  const hasTimeConflict = (acceptedRequests ?? []).some((accepted) => {
+    const acceptedStart = minutes(accepted.requested_time);
+    const acceptedEnd = acceptedStart + 60;
+    return requestedStart < acceptedEnd && requestedEnd > acceptedStart;
+  });
+  if (hasTimeConflict) {
+    const conflictingStart = (acceptedRequests ?? [])
+      .map((accepted) => minutes(accepted.requested_time))
+      .find((acceptedStart) => requestedStart < acceptedStart + 60 && requestedEnd > acceptedStart);
+    const beforeLimit = conflictingStart! - 59;
+    const nowInKualaLumpur = new Intl.DateTimeFormat("en-GB", {
+      timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).formatToParts(new Date());
+    const currentMinutes = Number(nowInKualaLumpur.find((part) => part.type === "hour")?.value) * 60
+      + Number(nowInKualaLumpur.find((part) => part.type === "minute")?.value);
+    const canSuggestEarlier = beforeLimit > 0
+      && (input.data.requested_date !== klDateKey(new Date().toISOString()) || currentMinutes < beforeLimit);
+    const earlier = canSuggestEarlier ? `before ${formatMinuteOfDay(beforeLimit)} or ` : "";
+    const later = `after ${formatMinuteOfDay(conflictingStart! + 60)}`;
+    return fieldValidation("requested_time", `This volunteer already has a request. Please choose a time ${earlier}${later}.`);
+  }
+  if (requestedAt.getTime() < Date.now() + ONE_HOUR_MS) {
+    return fieldValidation("requested_time", "Choose a time at least 1 hour from now.");
   }
 
   const { error } = await auth.db.from("support_request").insert({

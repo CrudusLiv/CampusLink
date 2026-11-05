@@ -18,7 +18,7 @@ describe("volunteer self-selection", () => {
     expect(isOwnVolunteer(OTHER, SELF)).toBe(false);
   });
 
-  it("excludes only the current user from Auto-Match candidates", () => {
+  it("excludes only the current user from volunteer choices", () => {
     const candidates = [{ user_id: SELF }, { user_id: OTHER }];
     expect(withoutOwnVolunteer(candidates, SELF)).toEqual([{ user_id: OTHER }]);
     expect(withoutOwnVolunteer(candidates, null)).toEqual(candidates);
