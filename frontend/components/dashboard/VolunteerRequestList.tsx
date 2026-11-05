@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { scheduleSession } from "@/lib/sessions/client";
@@ -221,7 +222,7 @@ export default function VolunteerRequestList({ view }: { view: VolunteerRequestV
                 <td className={historyStyles.sessionTitle}>{item.title}</td>
                 <td>{item.requester_name}</td>
                 <td>{new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${item.requested_date}T00:00:00Z`))}, {item.requested_time.slice(0, 5)}</td>
-                <td>{item.rating ? <span className={historyStyles.ratingStars} aria-label={`Your rating: ${item.rating} out of 5`}>{Array.from({ length: 5 }, (_, index) => index < item.rating! ? "★" : "☆").join("")}</span> : <span aria-label="No rating">—</span>}</td>
+                <td>{item.rating ? <><span className={historyStyles.ratingStars} aria-label={`Student rating: ${item.rating} out of 5`}>{Array.from({ length: 5 }, (_, index) => index < item.rating! ? "★" : "☆").join("")}</span>{item.session_id && <Link className={historyStyles.rateLink} href={`/sessions/${item.session_id}?from=volunteer-history`}> View feedback</Link>}</> : <span aria-label="No rating">—</span>}</td>
                 <td><RequestStatusBadge status={item.status} /></td>
               </tr>)}
             </tbody>

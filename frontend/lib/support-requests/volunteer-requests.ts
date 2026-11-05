@@ -15,6 +15,7 @@ export type VolunteerRequestItem = {
   requester_name: string;
   status: SupportRequestStatus;
   rating?: number | null;
+  session_id?: string | null;
 };
 
 type RequestRow = Omit<VolunteerRequestItem, "id" | "requester_name"> & {
@@ -67,7 +68,7 @@ export async function loadVolunteerRequests(
     ]),
   );
 
-  const ratings = new Map<string, number>();
+  const feedbackByRequest = new Map<string, { rating: number; session_id: string }>();
   if (view === "history" && rows.length) {
     const { data: sessions } = await db
       .from("session")
@@ -79,13 +80,13 @@ export async function loadVolunteerRequests(
         .from("feedback")
         .select("session_id, rating")
         .in("session_id", sessionRows.map((row) => row.session_id));
-      const feedbackRatings = new Map(
+      const feedbackBySession = new Map(
         ((feedback ?? []) as unknown as { session_id: string; rating: number }[])
           .map((row) => [row.session_id, Number(row.rating)]),
       );
       for (const session of sessionRows) {
-        const rating = feedbackRatings.get(session.session_id);
-        if (rating !== undefined) ratings.set(session.request_id, rating);
+        const rating = feedbackBySession.get(session.session_id);
+        if (rating !== undefined) feedbackByRequest.set(session.request_id, { rating, session_id: session.session_id });
       }
     }
   }
@@ -98,7 +99,10 @@ export async function loadVolunteerRequests(
         id: request_id,
         status: String(row.status) as SupportRequestStatus,
         requester_name: names.get(row.requester_id) ?? "Student",
-        ...(view === "history" ? { rating: ratings.get(row.request_id) ?? null } : {}),
+        ...(view === "history" ? {
+          rating: feedbackByRequest.get(row.request_id)?.rating ?? null,
+          session_id: feedbackByRequest.get(row.request_id)?.session_id ?? null,
+        } : {}),
       };
     }),
     error: null,
