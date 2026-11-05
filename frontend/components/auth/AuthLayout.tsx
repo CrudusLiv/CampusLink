@@ -5,14 +5,10 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Space_Grotesk } from "next/font/google";
+import { spaceGrotesk } from "@/lib/fonts";
 import styles from "./AuthLayout.module.css";
 
-const display = Space_Grotesk({
-  subsets: ["latin"],
-  weight: ["300", "400", "500"],
-  variable: "--font-display",
-});
+const display = spaceGrotesk;
 
 type Props = {
   children: ReactNode;

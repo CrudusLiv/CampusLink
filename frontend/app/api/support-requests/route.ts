@@ -91,15 +91,16 @@ export async function POST(req: Request) {
     return fail(500, "unknown", "We could not verify the selected volunteer's schedule");
   }
 
+  const acceptedTimes = (acceptedRequests ?? []) as { requested_time: string }[];
   const requestedStart = minutes(requestedTime);
   const requestedEnd = requestedStart + 60;
-  const hasTimeConflict = (acceptedRequests ?? []).some((accepted) => {
+  const hasTimeConflict = acceptedTimes.some((accepted) => {
     const acceptedStart = minutes(accepted.requested_time);
     const acceptedEnd = acceptedStart + 60;
     return requestedStart < acceptedEnd && requestedEnd > acceptedStart;
   });
   if (hasTimeConflict) {
-    const conflictingStart = (acceptedRequests ?? [])
+    const conflictingStart = acceptedTimes
       .map((accepted) => minutes(accepted.requested_time))
       .find((acceptedStart) => requestedStart < acceptedStart + 60 && requestedEnd > acceptedStart);
     const beforeLimit = conflictingStart! - 59;
