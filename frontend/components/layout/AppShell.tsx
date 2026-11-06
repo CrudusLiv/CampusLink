@@ -13,10 +13,10 @@ import { useVolunteerDashboardView } from "@/components/dashboard/VolunteerViewC
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import NotificationBell from "@/components/layout/NotificationBell";
 import styles from "./AppShell.module.css";
-import { Space_Grotesk } from "next/font/google";
+import { spaceGrotesk } from "@/lib/fonts";
 
 // Same wordmark font as the landing page
-const display = Space_Grotesk({ subsets: ["latin"], weight: ["500"], variable: "--font-display" });
+const display = spaceGrotesk;
 
 type Item = { label: string; href?: string };
 

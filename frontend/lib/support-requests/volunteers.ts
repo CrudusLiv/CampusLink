@@ -19,7 +19,7 @@ export function volunteerDirectoryCards<T extends { user_id: string }>(volunteer
   }));
 }
 
-/** Keep the directory intact; only Auto-Match uses this to omit the current user. */
+/** Omit the current user from volunteer choices. */
 export function withoutOwnVolunteer<T extends { user_id: string }>(volunteers: T[], userId: string | null | undefined) {
   return userId ? volunteers.filter((volunteer) => volunteer.user_id !== userId) : volunteers;
 }

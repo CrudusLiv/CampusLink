@@ -6,16 +6,8 @@ import { SUBJECTS } from "@/lib/categories";
 import { ASK_SUPPORT_DRAFT_KEY } from "@/lib/askSupportDraft";
 import { klDateKey, TZ } from "@/lib/sessions/time";
 import { supabase } from "@/lib/supabaseClient";
-import { isOwnVolunteer, isSelfVolunteerConstraintError, withoutOwnVolunteer } from "@/lib/support-requests/volunteers";
+import { isOwnVolunteer, isSelfVolunteerConstraintError } from "@/lib/support-requests/volunteers";
 import styles from "./SubmitRequestForm.module.css";
-import { matchesVolunteerSkill, selectVolunteerRecommendations, } from "@/lib/support-requests/volunteer-matching";
-
-type AutoMatchVolunteer = {
-  user_id: string;
-  name: string;
-  photo_url: string | null;
-  skills: string[];
-};
 
 export type ExistingSupportRequest = {
   id: string;
@@ -37,7 +29,7 @@ type FormInitialValues = {
   date: string;
   time: string;
   supportMode: string;
-  volunteerChoice: "none" | "choose" | "auto";
+  volunteerChoice: "none" | "choose";
   chosenVolunteer: { id: string; name: string; category: string; photoUrl: string | null } | null;
 };
 
@@ -113,6 +105,16 @@ function formatSelectedDate(value: string) {
   return `${parsed.getUTCMonth() + 1}/${parsed.getUTCDate()}/${parsed.getUTCFullYear()}, ${weekday}`;
 }
 
+function formatSessionTimeRange(value: string) {
+  if (!value) return "";
+  const [hour, minute] = value.split(":").map(Number);
+  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return "";
+  const start = new Date(2000, 0, 1, hour, minute);
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  const formatter = new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+  return `${formatter.format(start)} - ${formatter.format(end)}`;
+}
+
 function localDateValue(date: Date) {
   return klDateKey(date.toISOString());
 }
@@ -164,16 +166,11 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
   const [date, setDate] = useState<string>(initialValues.date);
   const [time, setTime] = useState<string>(initialValues.time);
   const [supportMode, setSupportMode] = useState<string>(initialValues.supportMode);
-  const [volunteerChoice, setVolunteerChoice] = useState<"none" | "choose" | "auto">(initialValues.volunteerChoice);
+  const [volunteerChoice, setVolunteerChoice] = useState<"none" | "choose">(initialValues.volunteerChoice);
   const [chosenVolunteer, setChosenVolunteer] = useState(initialValues.chosenVolunteer);
-  const [autoMatches, setAutoMatches] = useState<AutoMatchVolunteer[]>([]);
-  const [matching, setMatching] = useState(false);
-  const [matchError, setMatchError] = useState("");
-  const [hasMatched, setHasMatched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [validationError, setValidationError] = useState<{ field: string; message: string } | null>(null);
-  const matchRequestId = useRef(0);
   const isSubmitting = useRef(false);
 
   const MODES = ["Online", "In-person"];
@@ -207,104 +204,6 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
     params.set("from", "ask-for-support");
     const query = params.toString();
     router.push(`/volunteer-lists${query ? `?${query}` : ""}`);
-  }
-
-  async function findMatches() {
-    const requestId = ++matchRequestId.current;
-    clearValidationError();
-    setVolunteerChoice("auto");
-    setChosenVolunteer(null);
-    setAutoMatches([]);
-    setMatchError("");
-    setHasMatched(true);
-    setMatching(true);
-
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    if (requestId !== matchRequestId.current) return;
-    if (authError || !authData.user) {
-      setMatchError("Please log in again before finding volunteers.");
-      setMatching(false);
-      return;
-    }
-
-    const { data: volunteerRows, error: volunteerError } = await supabase
-      .from("volunteer_profile")
-      .select("user_id, skills")
-      .eq("is_volunteer", true);
-
-    if (requestId !== matchRequestId.current) return;
-
-    if (volunteerError) {
-      setMatchError("We couldn't find volunteers right now. Please try again.");
-      setMatching(false);
-      return;
-    }
-
-    const eligibleRows = withoutOwnVolunteer(volunteerRows ?? [], authData.user.id).filter((row) =>
-      matchesVolunteerSkill(row.skills ?? [], selectedCategory)
-    );
-    if (eligibleRows.length === 0) {
-      setMatching(false);
-      return;
-    }
-
-    const ids = eligibleRows.map((row) => row.user_id);
-    const [{ data: profiles, error: profileError }, { data: slots, error: slotsError }] = await Promise.all([
-      supabase.from("users").select("user_id, name, photo_url").in("user_id", ids),
-      supabase.from("availability").select("user_id, day_of_week, start_time, end_time").in("user_id", ids),
-    ]);
-
-    if (requestId !== matchRequestId.current) return;
-
-    if (profileError || slotsError) {
-      setMatchError("We couldn't load volunteer details. Please try again.");
-      setMatching(false);
-      return;
-    }
-
-    const requestedDay = weekdayFromDate(date);
-    const slotsByUser = new Map<string, { day: string; start: string; end: string }[]>();
-    (slots ?? []).forEach((slot) => {
-      const userSlots = slotsByUser.get(slot.user_id) ?? [];
-      userSlots.push({ day: slot.day_of_week, start: slot.start_time, end: slot.end_time });
-      slotsByUser.set(slot.user_id, userSlots);
-    });
-
-    const profileByUser = new Map((profiles ?? []).map((profile) => [profile.user_id, profile]));
-    const candidates = eligibleRows.flatMap((row) => {
-    const profile = profileByUser.get(row.user_id);
-    if (!profile) return [];
-
-    return [{
-      user_id: row.user_id,
-      name: profile.name,
-      photo_url: profile.photo_url,
-      skills: row.skills ?? [],
-      availability: slotsByUser.get(row.user_id) ?? [],
-    }];
-  });
-
-  const matches = selectVolunteerRecommendations(
-    candidates,
-    authData.user.id,
-    requestedDay,
-    time,
-  );
-
-  setAutoMatches(matches);
-  setMatching(false);
-  }
-
-  function clearAutoMatches() {
-    matchRequestId.current += 1;
-    setAutoMatches([]);
-    setHasMatched(false);
-    setMatching(false);
-    setMatchError("");
-    if (volunteerChoice === "auto") {
-      setChosenVolunteer(null);
-      setVolunteerChoice("none");
-    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -376,7 +275,7 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
       return;
     }
     const selectedDateTime = new Date(`${date}T${time}:00+08:00`);
-    if (!date || !time || Number.isNaN(selectedDateTime.getTime()) || selectedDateTime.getTime() < Date.now() + 60 * 60 * 1000) {
+    if (!date || !time || Number.isNaN(selectedDateTime.getTime()) || (mode !== "create" && selectedDateTime.getTime() < Date.now() + 60 * 60 * 1000)) {
       failValidation("time", "Please choose a time at least 1 hour from now.");
       return;
     }
@@ -426,7 +325,7 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
             body: JSON.stringify(requestValues),
           });
           const payload = await response.json().catch(() => ({}));
-          return { data: null, error: response.ok ? null : { code: response.status === 400 && payload.fields?.volunteer_id === "You cannot select yourself as a volunteer." ? "SELF_VOLUNTEER" : "API_ERROR", message: payload.message ?? "Request submission failed.", details: "" } };
+          return { data: null, error: response.ok ? null : { code: response.status === 400 && payload.fields?.volunteer_id === "You cannot select yourself as a volunteer." ? "SELF_VOLUNTEER" : response.status === 400 && payload.fields?.requested_time?.includes("already has a request") ? "VOLUNTEER_TIME_CONFLICT" : "API_ERROR", message: payload.fields?.requested_time ?? payload.message ?? "Request submission failed.", details: "" } };
         } catch {
           return { data: null, error: { code: "NETWORK_ERROR", message: "Network error. Please check your connection and try again.", details: "" } };
         }
@@ -438,6 +337,8 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
       console.error("Support request save failed:", { code: error.code, message: error.message, details: error.details });
       if (error.code === "SELF_VOLUNTEER" || isSelfVolunteerConstraintError(error)) {
         setSubmitError("You cannot select yourself as a volunteer.");
+      } else if (error.code === "VOLUNTEER_TIME_CONFLICT") {
+        setValidationError({ field: "time", message: error.message });
       } else if (error.code === "42P01" || error.code === "PGRST205") {
         setSubmitError("Support request storage is not set up yet. Apply the support_request migration, then try again.");
       } else if (error.code === "42501") {
@@ -480,7 +381,7 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
                   key={subject}
                   type="button"
                   disabled={readOnly || loading}
-                  onClick={() => { clearAutoMatches(); setSelectedCategory(subject); clearValidationError(); }}
+                  onClick={() => { setSelectedCategory(subject); clearValidationError(); }}
                   className={selectedCategory === subject ? `${styles.tag} ${styles.tagSelected}` : styles.tag}
                 >
                   {subject}
@@ -524,7 +425,7 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
               className={`${styles.input} ${date ? styles.dateInputWithLabel : ""}`}
               value={date}
               min={localDateValue(new Date())}
-              onChange={(e) => { clearAutoMatches(); setDate(e.target.value); clearValidationError(); }}
+              onChange={(e) => { setDate(e.target.value); clearValidationError(); }}
               disabled={readOnly || loading}
             />
             {date && <span className={styles.dateDisplay} aria-hidden="true">{formatSelectedDate(date)}</span>}
@@ -537,9 +438,10 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
                 aria-label="Preferred time"
                 className={styles.input}
                 value={time}
-                onChange={(e) => { clearAutoMatches(); setTime(e.target.value); clearValidationError(); }}
+                onChange={(e) => { setTime(e.target.value); clearValidationError(); }}
                 disabled={readOnly || loading}
               />
+              {time && <p className={styles.sessionDuration}>Session duration: {formatSessionTimeRange(time)}</p>}
               {validationError?.field === "time" && <p className={styles.validationTooltip} role="alert">{validationError.message}</p>}
             </div>
           </div>
@@ -553,7 +455,7 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
                   key={mode}
                   type="button"
                   disabled={readOnly || loading}
-                  onClick={() => { clearAutoMatches(); setSupportMode(mode); clearValidationError(); }}
+                  onClick={() => { setSupportMode(mode); clearValidationError(); }}
                   className={supportMode === mode ? `${styles.tag} ${styles.tagSelected}` : styles.tag}
                 >
                   {mode}
@@ -561,6 +463,25 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
               ))}
             </div>
           </div>
+
+          {mode === "create" && <div className={styles.volunteerSection}>
+            <label className={styles.label}>Volunteer</label>
+            {validationError?.field === "volunteer" && <p className={styles.validationTooltip} role="alert">{validationError.message}</p>}
+            <div className={styles.toggleButtons}>
+              <button type="button" className={`${styles.toggleBtn} ${volunteerChoice === "choose" ? styles.toggleBtnActive : ""}`} onClick={chooseVolunteer} disabled={loading}>Choose Volunteer</button>
+            </div>
+            {chosenVolunteer && volunteerChoice === "choose" && <div className={styles.matchCard}>
+              {chosenVolunteer.photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img className={styles.matchAvatar} src={chosenVolunteer.photoUrl} alt="" />
+              ) : <span className={styles.matchAvatarFallback}>{chosenVolunteer.name.split(/\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase()}</span>}
+              <div className={styles.matchDetails}>
+                <strong>{chosenVolunteer.name}</strong>
+                <span>{chosenVolunteer.category}</span>
+              </div>
+              <span className={styles.matchSelectedBadge}>Selected</span>
+            </div>}
+          </div>}
 
           {submitError && <p className={styles.formError} role="alert">{submitError}</p>}
           {mode === "view" && canEdit ? (
@@ -572,56 +493,6 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
           )}
         </form>
       </section>
-
-      <aside className={styles.volunteerSection}>
-        {mode === "create" && <>
-          <h2 className={styles.sectionHeading}>Volunteer</h2>
-          {validationError?.field === "volunteer" && <p className={styles.validationTooltip} role="alert">{validationError.message}</p>}
-          <p className={styles.sectionDesc}>Choose a volunteer yourself or let CampusLink match you with one.</p>
-          <div className={styles.toggleButtons}>
-            <button type="button" className={`${styles.toggleBtn} ${volunteerChoice === "choose" ? styles.toggleBtnActive : ""}`} onClick={chooseVolunteer} disabled={loading}>Choose Volunteer</button>
-            <button type="button" className={`${styles.toggleBtn} ${volunteerChoice === "auto" ? styles.toggleBtnActive : ""}`} onClick={findMatches} disabled={matching || loading}>Auto-Match</button>
-          </div>
-        </>}
-        {volunteerChoice === "auto" && hasMatched && <div className={styles.autoMatchResults} aria-live="polite">
-          {matching ? <p className={styles.matchMessage}>Finding matching volunteers…</p> : matchError ? <p className={styles.matchError} role="alert">{matchError}</p> : autoMatches.length === 0 ? <p className={styles.matchMessage}>No volunteers match your selected category and availability.</p> : (
-            <>
-              <p className={styles.matchHeading}>Matching volunteers</p>
-              {autoMatches.map((volunteer) => {
-                const category = selectedCategory || volunteer.skills[0] || "";
-                const selected = chosenVolunteer?.id === volunteer.user_id;
-                return <div className={styles.matchCard} key={volunteer.user_id}>
-                  {volunteer.photo_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img className={styles.matchAvatar} src={volunteer.photo_url} alt="" />
-                  ) : <span className={styles.matchAvatarFallback}>{volunteer.name.split(/\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase()}</span>}
-                  <div className={styles.matchDetails}>
-                    <strong>{volunteer.name}</strong>
-                    <span>{category || volunteer.skills.join(", ")}</span>
-                  </div>
-                  <button
-                    type="button"
-                    className={selected ? styles.matchSelected : styles.matchSelect}
-                    disabled={loading}
-                    onClick={() => { setChosenVolunteer({ id: volunteer.user_id, name: volunteer.name, category, photoUrl: volunteer.photo_url }); clearValidationError(); }}
-                  >{selected ? "Selected" : "Select"}</button>
-                </div>;
-              })}
-            </>
-          )}
-        </div>}
-        {chosenVolunteer && (mode !== "create" || volunteerChoice === "choose") && <div className={styles.matchCard}>
-          {chosenVolunteer.photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img className={styles.matchAvatar} src={chosenVolunteer.photoUrl} alt="" />
-          ) : <span className={styles.matchAvatarFallback}>{chosenVolunteer.name.split(/\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase()}</span>}
-          <div className={styles.matchDetails}>
-            <strong>{chosenVolunteer.name}</strong>
-            <span>{chosenVolunteer.category}</span>
-          </div>
-          <span className={styles.matchSelectedBadge}>Selected</span>
-        </div>}
-      </aside>
 
     </div>
   );

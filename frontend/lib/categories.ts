@@ -1,6 +1,6 @@
 // Shared lists used across CampusLink.
 // IMPORTANT: volunteer skills (Epic 1) and support request categories (Epic 2)
-// must use the SAME names, otherwise filtering and auto-matching won't find matches.
+// must use the SAME names, otherwise category filtering won't find matches.
 // To add a new subject, add it here only.
 
 export const SUBJECTS = [

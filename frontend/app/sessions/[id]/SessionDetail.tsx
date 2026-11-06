@@ -13,8 +13,12 @@ const Stars = ({ value }: { value: number }) => (
   <span className={styles.starsStatic} role="img" aria-label={`${value} out of 5 stars`}>{"★".repeat(value)}{"☆".repeat(5 - value)}</span>
 );
 
-export default function SessionDetail({ sessionId, backTo = "sessions" }: { sessionId: string; backTo?: "sessions" | "history" }) {
-  const back = backTo === "history" ? { href: "/support-history", label: "Support History" } : { href: "/sessions", label: "My Support Sessions" };
+export default function SessionDetail({ sessionId, backTo = "sessions" }: { sessionId: string; backTo?: "sessions" | "history" | "volunteer-history" }) {
+  const back = backTo === "volunteer-history"
+    ? { href: "/volunteer/history", label: "My History" }
+    : backTo === "history"
+      ? { href: "/support-history", label: "My History" }
+      : { href: "/sessions", label: "My Support Sessions" };
   const [session, setSession] = useState<SessionView | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);

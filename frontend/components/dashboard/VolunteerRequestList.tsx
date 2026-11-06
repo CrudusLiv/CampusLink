@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { scheduleSession } from "@/lib/sessions/client";
@@ -22,6 +23,33 @@ const HISTORY_FILTERS = ["All", "Completed", "Cancelled", "Declined"] as const;
 type HistoryFilter = (typeof HISTORY_FILTERS)[number];
 
 type VolunteerRequest = VolunteerRequestItem & { isFree: boolean };
+
+function RequestText({ text, kind }: { text: string; kind: "title" | "description" }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLElement | null>(null);
+  const [truncated, setTruncated] = useState(false);
+
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    const content = textRef.current;
+    if (!wrap || !content) return;
+    const measure = () => setTruncated(kind === "title"
+      ? content.scrollWidth > content.clientWidth
+      : content.scrollHeight > content.clientHeight + 1);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(wrap);
+    return () => observer.disconnect();
+  }, [kind, text]);
+
+  const isTitle = kind === "title";
+  return <div ref={wrapRef} className={isTitle ? styles.titleWrap : styles.descriptionWrap} tabIndex={truncated ? 0 : undefined} aria-label={truncated ? `Full request ${kind}: ${text}` : undefined}>
+    {isTitle
+      ? <h3 ref={(node) => { textRef.current = node; }} className={`${sessionStyles.cardTitle} ${styles.requestTitle}`} aria-hidden={truncated}>{text}</h3>
+      : <p ref={(node) => { textRef.current = node; }} className={styles.requestDescription} aria-hidden={truncated}>{text}</p>}
+    {truncated && <p className={isTitle ? styles.titleOverlay : styles.descriptionOverlay} aria-hidden="true">{text}</p>}
+  </div>;
+}
 
 /** Request date and time are Kuala Lumpur wall time (UTC+8, no DST). */
 const requestedIso = (date: string, time: string) =>
@@ -194,7 +222,7 @@ export default function VolunteerRequestList({ view }: { view: VolunteerRequestV
                 <td className={historyStyles.sessionTitle}>{item.title}</td>
                 <td>{item.requester_name}</td>
                 <td>{new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${item.requested_date}T00:00:00Z`))}, {item.requested_time.slice(0, 5)}</td>
-                <td>{item.rating ? <span className={historyStyles.ratingStars} aria-label={`Your rating: ${item.rating} out of 5`}>{Array.from({ length: 5 }, (_, index) => index < item.rating! ? "★" : "☆").join("")}</span> : <span aria-label="No rating">—</span>}</td>
+                <td>{item.rating ? <><span className={historyStyles.ratingStars} aria-label={`Student rating: ${item.rating} out of 5`}>{Array.from({ length: 5 }, (_, index) => index < item.rating! ? "★" : "☆").join("")}</span>{item.session_id && <Link className={historyStyles.rateLink} href={`/sessions/${item.session_id}?from=volunteer-history`}> View feedback</Link>}</> : <span aria-label="No rating">—</span>}</td>
                 <td><RequestStatusBadge status={item.status} /></td>
               </tr>)}
             </tbody>
@@ -202,12 +230,9 @@ export default function VolunteerRequestList({ view }: { view: VolunteerRequestV
         </div> : <ul className={styles.list}>
           {items.map((item) => view === "incoming" ? <li key={item.id} className={`${sessionStyles.card} ${styles.incomingRequestCard}`}>
             <Avatar person={{ id: item.requester_id, name: item.requester_name, photoUrl: null }} />
-            <div className={sessionStyles.cardBody}>
-              <h3 className={sessionStyles.cardTitle}>{item.title}</h3>
-              {item.description && <div className={styles.descriptionWrap} tabIndex={0} aria-label={`Request description: ${item.description}`}>
-                <p className={styles.requestDescription} aria-hidden="true">{item.description}</p>
-                <p className={styles.descriptionOverlay} aria-hidden="true">{item.description}</p>
-              </div>}
+            <div className={`${sessionStyles.cardBody} ${styles.incomingRequestBody}`}>
+              <RequestText text={item.title} kind="title" />
+              <RequestText text={item.description ?? ""} kind="description" />
               <p className={sessionStyles.cardMeta}>{new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kuala_Lumpur" }).format(new Date(requestedIso(item.requested_date, item.requested_time)))} · {item.support_mode ?? "Support"}</p>
               <p className={sessionStyles.cardWith}>From {item.requester_name}</p>
             </div>

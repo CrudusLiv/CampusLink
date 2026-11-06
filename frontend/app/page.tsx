@@ -3,14 +3,10 @@
 // Styles are in landing.module.css (page.module.css is still used by the dashboard).
 
 import Link from "next/link";
-import { Space_Grotesk } from "next/font/google";
+import { spaceGrotesk } from "@/lib/fonts";
 import styles from "./landing.module.css";
 
-const display = Space_Grotesk({
-  subsets: ["latin"],
-  weight: ["300", "400", "500"],
-  variable: "--font-display",
-});
+const display = spaceGrotesk;
 
 function ArrowIcon() {
   return (
