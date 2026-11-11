@@ -254,3 +254,12 @@
     animation: none;
   }
 }
+
+/* Easier to read: darker frosted card behind the text */
+.card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.04)),
+    rgba(14, 18, 26, 0.65);
+  backdrop-filter: blur(28px) saturate(140%);
+  -webkit-backdrop-filter: blur(28px) saturate(140%);
+}
