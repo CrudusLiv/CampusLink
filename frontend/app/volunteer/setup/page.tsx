@@ -11,43 +11,18 @@ import AppShell, { AppShellLoading } from "@/components/layout/AppShell";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { SUBJECTS, DAYS, Day } from "@/lib/categories";
-import { HOURS, cellKey, cellsToSlots, isDayFull, toTime, toggleDay, weekSummary, weekdayHours } from "@/lib/availability-grid";
 import styles from "./setup.module.css";
-
-const MAX_SUBJECT_LENGTH = 40;
-
-// Tidies a typed subject: trims spaces and reuses the list's spelling if it already exists,
-// so "database" and "Database" count as the same subject.
-export function normaliseSubject(input: string, existing: string[]) {
-  const cleaned = input.trim().replace(/\s+/g, " ");
-  const match = existing.find((s) => s.toLowerCase() === cleaned.toLowerCase());
-  return match ?? cleaned;
-}
-
-// Kept separate so they can be unit tested later
-export function validateNewSubject(input: string, skills: string[]) {
-  const cleaned = input.trim();
-  if (cleaned === "") return "Type a subject first.";
-  if (cleaned.length > MAX_SUBJECT_LENGTH) return `Keep it under ${MAX_SUBJECT_LENGTH} characters.`;
-  if (skills.some((s) => s.toLowerCase() === cleaned.toLowerCase())) return "You've already added this subject.";
-  return "";
-}
-
-// A short "fingerprint" of the choices, used to tell if anything changed since the last save
-export function setupSignature(skills: string[], cells: Set<string>) {
-  return JSON.stringify([[...skills].sort(), [...cells].sort()]);
-}
-
-export function validateVolunteerSetup(skills: string[], cells: Set<string>) {
-  const errors: { skills?: string; slots?: string } = {};
-  if (skills.length === 0) {
-    errors.skills = "Choose at least one subject tag.";
-  }
-  if (cells.size === 0) {
-    errors.slots = "Choose at least one time slot.";
-  }
-  return errors;
-}
+import {
+  HOURS,
+  MAX_SUBJECT_LENGTH,
+  cellKey,
+  toTime,
+  normaliseSubject,
+  validateNewSubject,
+  setupSignature,
+  validateVolunteerSetup,
+  cellsToSlots,
+} from "@/lib/validation/volunteerSetup";
 
 export default function VolunteerSetupPage() {
   const { profile } = useCurrentUser();
@@ -122,22 +97,6 @@ export default function VolunteerSetupPage() {
     });
   }
 
-  // Whole-day and preset shortcuts, so nobody has to click up to 91 separate hours
-  function toggleWholeDay(day: Day) {
-    setMessage("");
-    setCells((current) => toggleDay(current, day));
-  }
-
-  function selectWeekdays() {
-    setMessage("");
-    setCells(weekdayHours());
-  }
-
-  function clearAllHours() {
-    setMessage("");
-    setCells(new Set());
-  }
-
   async function handleSave() {
     setMessage("");
     setServerError("");
@@ -192,15 +151,12 @@ export default function VolunteerSetupPage() {
           ) : (
             <>
               <p className={styles.subtitle}>
-                Pick what you can help with and when you&apos;re free each week. Students searching for
+                Pick what you can help with and when you're free each week. Students searching for
                 help will see you when your subjects and times match.
               </p>
 
               <section className={styles.section}>
                 <h2 className={styles.sectionTitle}>Subjects you can help with</h2>
-                <p className={styles.hint}>
-                  {skills.length === 0 ? "None chosen yet." : `${skills.length} chosen.`} Click a subject to add or remove it.
-                </p>
                 <div className={styles.tags}>
                   {allSubjects.map((subject) => {
                     const selected = skills.includes(subject);
@@ -212,7 +168,6 @@ export default function VolunteerSetupPage() {
                         aria-pressed={selected}
                         className={selected ? `${styles.tag} ${styles.tagSelected}` : styles.tag}
                       >
-                        {selected && <span aria-hidden="true">✓ </span>}
                         {subject}
                       </button>
                     );
@@ -246,39 +201,22 @@ export default function VolunteerSetupPage() {
                   </button>
                 </div>
                 {subjectError && <p className={styles.error}>{subjectError}</p>}
+                {customSkills.length > 0 && (
+                  <p className={styles.hint}>Click a subject again to remove it.</p>
+                )}
                 {errors.skills && <p className={styles.error}>{errors.skills}</p>}
               </section>
 
               <section className={styles.section}>
                 <h2 className={styles.sectionTitle}>Weekly availability</h2>
-                <p className={styles.hint}>
-                  Click the hours you&apos;re free, or click a day name to select the whole day. Click again to remove.
-                </p>
-                <div className={styles.quick}>
-                  <button type="button" onClick={selectWeekdays} className={styles.quickButton}>
-                    Weekdays 09:00–17:00
-                  </button>
-                  <button type="button" onClick={clearAllHours} className={styles.quickButton} disabled={cells.size === 0}>
-                    Clear all
-                  </button>
-                </div>
+                <p className={styles.hint}>Click the hours you're free. Click again to remove.</p>
                 <div className={styles.gridWrap}>
                   <table className={styles.grid}>
                     <thead>
                       <tr>
                         <th className={styles.timeHead}></th>
                         {DAYS.map((day) => (
-                          <th key={day}>
-                            <button
-                              type="button"
-                              onClick={() => toggleWholeDay(day)}
-                              aria-pressed={isDayFull(cells, day)}
-                              aria-label={`${isDayFull(cells, day) ? "Clear" : "Select"} all of ${day}`}
-                              className={styles.dayButton}
-                            >
-                              {day}
-                            </button>
-                          </th>
+                          <th key={day}>{day}</th>
                         ))}
                       </tr>
                     </thead>
@@ -286,8 +224,7 @@ export default function VolunteerSetupPage() {
                       {HOURS.map((hour) => (
                         <tr key={hour}>
                           <th className={styles.timeLabel}>
-                            {toTime(hour)}
-                            <span className={styles.rangeEnd}>–{toTime(hour + 1)}</span>
+                            {toTime(hour)}–{toTime(hour + 1)}
                           </th>
                           {DAYS.map((day) => {
                             const selected = cells.has(cellKey(day, hour));
@@ -299,9 +236,7 @@ export default function VolunteerSetupPage() {
                                   aria-pressed={selected}
                                   aria-label={`${day} ${toTime(hour)} to ${toTime(hour + 1)}`}
                                   className={selected ? `${styles.cell} ${styles.cellSelected}` : styles.cell}
-                                >
-                                  <span aria-hidden="true">{selected ? "✓" : ""}</span>
-                                </button>
+                                />
                               </td>
                             );
                           })}
@@ -311,18 +246,6 @@ export default function VolunteerSetupPage() {
                   </table>
                 </div>
                 {errors.slots && <p className={styles.error}>{errors.slots}</p>}
-                <div className={styles.summary} aria-live="polite">
-                  {cells.size === 0 ? (
-                    <p>No hours chosen yet.</p>
-                  ) : (
-                    <>
-                      <p><strong>You&apos;re free {cells.size} {cells.size === 1 ? "hour" : "hours"} a week:</strong></p>
-                      <ul className={styles.summaryList}>
-                        {weekSummary(cells).map((line) => <li key={line}>{line}</li>)}
-                      </ul>
-                    </>
-                  )}
-                </div>
               </section>
 
               {/* Save bar stays at the bottom of the screen, so the result is always visible */}
@@ -331,9 +254,6 @@ export default function VolunteerSetupPage() {
                   {saving ? "Saving..." : "Save availability"}
                 </button>
                 <div role="status" aria-live="polite" className={styles.saveStatus}>
-                  {!message && !serverError && savedSignature !== "" && setupSignature(skills, cells) !== savedSignature && (
-                    <p className={styles.unsaved}>You have unsaved changes.</p>
-                  )}
                   {message && <p className={styles.success}>✓ {message}</p>}
                   {serverError && <p className={styles.serverError}>{serverError}</p>}
                 </div>
