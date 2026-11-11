@@ -47,7 +47,9 @@ export default function BecomeVolunteerCard({ userId }: { userId: string }) {
       return;
     }
 
-    // Next step of US6: set up skills and availability
+    // US6: the navigation bar switches to the volunteer menu straight away (no need to log in again),
+    // then the volunteer sets up their skills and availability
+    setView("volunteer");
     router.push("/volunteer/setup");
   }
 
@@ -92,7 +94,7 @@ export default function BecomeVolunteerCard({ userId }: { userId: string }) {
           <p className={styles.text}>Become a volunteer and appear in the student support directory.</p>
         </div>
         <button type="button" className={styles.primaryButton} onClick={() => setShowModal(true)}>
-          Become a volunteer
+          Become a Volunteer
         </button>
       </div>
 
@@ -105,7 +107,7 @@ export default function BecomeVolunteerCard({ userId }: { userId: string }) {
             <ul className={styles.list}>
               <li>Be respectful and patient with every student you help.</li>
               <li>Reply to support requests promptly, even if you need to decline.</li>
-              <li>Meet on campus or through Microsoft Teams / Google Meet only.</li>
+              <li>Meet on campus or through Google Meet or Zoom only.</li>
               <li>Don't do assignments for other students. Help them understand instead.</li>
               <li>Keep other students' personal details private.</li>
             </ul>
@@ -138,7 +140,7 @@ export default function BecomeVolunteerCard({ userId }: { userId: string }) {
                 Cancel
               </button>
               <button type="button" className={styles.primaryButton} onClick={handleConfirm} disabled={working}>
-                {working ? "Setting up..." : "Become a volunteer"}
+                {working ? "Setting up..." : "Become a Volunteer"}
               </button>
             </div>
           </div>
