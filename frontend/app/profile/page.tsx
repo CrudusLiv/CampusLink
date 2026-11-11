@@ -171,7 +171,7 @@ export default function ProfilePage() {
             </div>
 
             <button type="submit" className={styles.submit} disabled={saving}>
-              {saving ? "Saving..." : "Save changes"}
+              {saving ? "Saving..." : "Save Changes"}
             </button>
           </form>
           </div>
