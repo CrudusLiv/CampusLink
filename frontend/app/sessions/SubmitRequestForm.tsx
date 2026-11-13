@@ -121,8 +121,12 @@ function localDateValue(date: Date) {
 
 function isWithinSlot(time: string, start: string, end: string) {
   if (!time) return true;
-  const selected = time.slice(0, 5);
-  return start.slice(0, 5) <= selected && selected < end.slice(0, 5);
+  const minutes = (value: string) => {
+    const [hour, minute] = value.slice(0, 5).split(":").map(Number);
+    return hour * 60 + minute;
+  };
+  const selectedStart = minutes(time);
+  return minutes(start) <= selectedStart && selectedStart + 60 <= minutes(end);
 }
 
 export function SubmitRequestForm(props: { mode?: FormMode; request?: ExistingSupportRequest; canEdit?: boolean }) {
@@ -276,7 +280,7 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
     }
     const selectedDateTime = new Date(`${date}T${time}:00+08:00`);
     if (!date || !time || Number.isNaN(selectedDateTime.getTime()) || (mode !== "create" && selectedDateTime.getTime() < Date.now() + 60 * 60 * 1000)) {
-      failValidation("time", "Please choose a time at least 1 hour from now.");
+      failValidation("time", "Choose a time at least 1 hour from now.");
       return;
     }
     const authResult = await supabase.auth.getUser().catch(() => null);
@@ -325,7 +329,7 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
             body: JSON.stringify(requestValues),
           });
           const payload = await response.json().catch(() => ({}));
-          return { data: null, error: response.ok ? null : { code: response.status === 400 && payload.fields?.volunteer_id === "You cannot select yourself as a volunteer." ? "SELF_VOLUNTEER" : response.status === 400 && payload.fields?.requested_time?.includes("already has a request") ? "VOLUNTEER_TIME_CONFLICT" : "API_ERROR", message: payload.fields?.requested_time ?? payload.message ?? "Request submission failed.", details: "" } };
+          return { data: null, error: response.ok ? null : { code: response.status === 400 && payload.fields?.volunteer_id === "You cannot select yourself as a volunteer." ? "SELF_VOLUNTEER" : response.status === 400 && payload.fields?.requested_time?.includes("already has a request") ? "VOLUNTEER_TIME_CONFLICT" : response.status === 400 && payload.fields?.requested_time === "Choose a time at least 1 hour from now." ? "TIME_TOO_SOON" : "API_ERROR", message: payload.fields?.requested_time ?? payload.message ?? "Request submission failed.", details: "" } };
         } catch {
           return { data: null, error: { code: "NETWORK_ERROR", message: "Network error. Please check your connection and try again.", details: "" } };
         }
@@ -339,6 +343,8 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
         setSubmitError("You cannot select yourself as a volunteer.");
       } else if (error.code === "VOLUNTEER_TIME_CONFLICT") {
         setValidationError({ field: "time", message: error.message });
+      } else if (error.code === "TIME_TOO_SOON") {
+        setValidationError({ field: "time", message: "Choose a time at least 1 hour from now." });
       } else if (error.code === "42P01" || error.code === "PGRST205") {
         setSubmitError("Support request storage is not set up yet. Apply the support_request migration, then try again.");
       } else if (error.code === "42501") {

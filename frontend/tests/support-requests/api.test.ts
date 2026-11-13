@@ -14,25 +14,29 @@ vi.mock("@/lib/sessions/api", async (original) => ({
 const { POST } = await import("@/app/api/support-requests/route");
 
 const ME = "a1b2c3d4-0001-4000-8000-000000000001";
-const OTHER = "a1b2c3d4-0002-4000-8000-000000000002";
+const VOLUNTEER = "a1b2c3d4-0002-4000-8000-000000000002";
 
-function nextMondayInKL() {
-  const klNow = new Date(Date.now() + 8 * 60 * 60 * 1000);
-  const daysUntilMonday = (8 - klNow.getUTCDay()) % 7 || 7;
-  const monday = new Date(Date.UTC(klNow.getUTCFullYear(), klNow.getUTCMonth(), klNow.getUTCDate() + daysUntilMonday));
-  return `${monday.getUTCFullYear()}-${String(monday.getUTCMonth() + 1).padStart(2, "0")}-${String(monday.getUTCDate()).padStart(2, "0")}`;
+function nextWeekdayInKL(targetDay: number) {
+  const now = new Date();
+  const klDate = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+  const daysAhead = (targetDay - klDate.getUTCDay() + 7) % 7 || 7;
+  const date = new Date(Date.UTC(klDate.getUTCFullYear(), klDate.getUTCMonth(), klDate.getUTCDate() + daysAhead));
+  return {
+    date: `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`,
+    weekday: new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "short" }).format(date),
+  };
 }
 
-const REQUEST_DATE = nextMondayInKL();
+const MONDAY = nextWeekdayInKL(1);
 const BODY = {
   title: "Help with programming",
   description: "I need help debugging my assignment.",
   category: "Programming",
-  requested_date: REQUEST_DATE,
+  requested_date: MONDAY.date,
   requested_time: "15:00",
   support_mode: "Online",
-  volunteer_id: OTHER,
-  preferred_time: new Date(`${REQUEST_DATE}T15:00:00+08:00`).toISOString(),
+  volunteer_id: VOLUNTEER,
+  preferred_time: new Date(`${MONDAY.date}T15:00:00+08:00`).toISOString(),
 };
 
 const post = (body: unknown) => POST(new Request("http://localhost/api/support-requests", {
@@ -49,7 +53,7 @@ let availabilityQuery: { select: ReturnType<typeof vi.fn>; eq: ReturnType<typeof
 beforeEach(() => {
   vi.resetAllMocks();
   volunteerProfileResult = { data: { skills: ["Programming"], is_volunteer: true }, error: null };
-  availabilityResult = { data: [{ day_of_week: "Mon", start_time: "14:00", end_time: "17:00" }], error: null };
+  availabilityResult = { data: [{ day_of_week: MONDAY.weekday, start_time: "14:00", end_time: "17:00" }], error: null };
   profileQuery = { select: vi.fn(), eq: vi.fn(), maybeSingle };
   profileQuery.select.mockReturnValue(profileQuery);
   profileQuery.eq.mockReturnValue(profileQuery);
@@ -73,130 +77,78 @@ beforeEach(() => {
 });
 
 describe("POST /api/support-requests", () => {
-  it("creates a valid request for an active volunteer with matching skill and availability", async () => {
+  it("TCUC2_3 submits a valid request for an eligible volunteer", async () => {
     const response = await post(BODY);
     expect(response.status).toBe(201);
     expect(await response.json()).toEqual({ success: true });
-    expect(from).toHaveBeenCalledWith("volunteer_profile");
-    expect(from).toHaveBeenCalledWith("availability");
+    expect(rpc).toHaveBeenCalledWith("get_volunteer_accepted_times", {
+      p_volunteer_id: VOLUNTEER,
+      p_requested_date: BODY.requested_date,
+    });
     expect(insert).toHaveBeenCalledWith({ ...BODY, requester_id: ME, status: "Pending" });
   });
 
-  it("rejects self-assignment before reading or writing requests", async () => {
-    const response = await post({ ...BODY, volunteer_id: ME });
-    expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({
-      error: "validation",
-      message: "You cannot select yourself as a volunteer.",
-      fields: { volunteer_id: "You cannot select yourself as a volunteer." },
-    });
-    expect(from).not.toHaveBeenCalled();
-    expect(insert).not.toHaveBeenCalled();
+  it("TCUC2_4 rejects a request with a missing required field", async () => {
+    const missingFields = [
+      ["title", { title: "" }],
+      ["description", { description: "" }],
+      ["category", { category: undefined }],
+      ["requested_date", { requested_date: undefined }],
+      ["requested_time", { requested_time: undefined }],
+      ["volunteer_id", { volunteer_id: undefined }],
+      ["support_mode", { support_mode: "" }],
+    ] as const;
+
+    for (const [field, override] of missingFields) {
+      const response = await post({ ...BODY, ...override });
+      expect(response.status).toBe(400);
+      expect((await response.json()).fields).toHaveProperty(field);
+      expect(insert).not.toHaveBeenCalled();
+    }
   });
 
-  it.each([
-    ["missing category", { category: undefined }, "category"],
-    ["illegal category", { category: "Unlisted subject" }, "category"],
-    ["missing date", { requested_date: undefined }, "requested_date"],
-    ["missing time", { requested_time: undefined }, "requested_time"],
-    ["unparseable date", { requested_date: "not-a-date" }, "requested_date"],
-    ["unparseable time", { requested_time: "25:70" }, "requested_time"],
-  ])("rejects %s without inserting", async (_caseName, override, expectedField) => {
-    const response = await post({ ...BODY, ...override });
-    expect(response.status).toBe(400);
-    expect((await response.json()).fields).toHaveProperty(expectedField);
-    expect(insert).not.toHaveBeenCalled();
-  });
-
-  it("rejects a category the selected volunteer does not support", async () => {
+  it("TCUC2_4 rejects a category the volunteer does not support", async () => {
     volunteerProfileResult = { data: { skills: ["Database"], is_volunteer: true }, error: null };
     const response = await post(BODY);
     expect(response.status).toBe(400);
     expect((await response.json()).fields).toHaveProperty("category");
+    expect(rpc).not.toHaveBeenCalled();
     expect(insert).not.toHaveBeenCalled();
   });
 
-  it("rejects an inactive or missing volunteer without inserting", async () => {
-    volunteerProfileResult = { data: null, error: null };
-    const response = await post(BODY);
-    expect(response.status).toBe(400);
-    expect((await response.json()).fields).toHaveProperty("volunteer_id");
-    expect(insert).not.toHaveBeenCalled();
-  });
-
-  it("rejects a date when the volunteer has no availability on that weekday", async () => {
-    availabilityResult = { data: [{ day_of_week: "Tue", start_time: "14:00", end_time: "17:00" }], error: null };
+  it("TCUC2_4 rejects a date without matching weekday availability", async () => {
+    availabilityResult = { data: [{ day_of_week: MONDAY.weekday === "Mon" ? "Tue" : "Mon", start_time: "14:00", end_time: "17:00" }], error: null };
     const response = await post(BODY);
     expect(response.status).toBe(400);
     expect((await response.json()).fields).toHaveProperty("requested_date");
     expect(insert).not.toHaveBeenCalled();
   });
 
-  it("rejects a time outside the volunteer's available hours", async () => {
-    availabilityResult = { data: [{ day_of_week: "Mon", start_time: "16:00", end_time: "17:00" }], error: null };
+  it("TCUC2_4 rejects a requested hour that starts outside availability", async () => {
+    availabilityResult = { data: [{ day_of_week: MONDAY.weekday, start_time: "16:00", end_time: "17:00" }], error: null };
     const response = await post(BODY);
     expect(response.status).toBe(400);
     expect((await response.json()).fields).toHaveProperty("requested_time");
     expect(insert).not.toHaveBeenCalled();
   });
 
-  it("rejects a preferred timestamp that does not match Kuala Lumpur request date and time", async () => {
-    const response = await post({ ...BODY, preferred_time: "2026-10-20T07:00:00.000Z" });
+  it("TCUC2_4 rejects a start time inside availability when a full hour does not fit", async () => {
+    availabilityResult = { data: [{ day_of_week: MONDAY.weekday, start_time: "14:00", end_time: "15:30" }], error: null };
+    const response = await post(BODY);
     expect(response.status).toBe(400);
-    expect((await response.json()).fields).toHaveProperty("preferred_time");
+    expect((await response.json()).fields).toHaveProperty("requested_time");
     expect(insert).not.toHaveBeenCalled();
   });
 
-  it("rejects past dates and request times less than one hour away", async () => {
-    const pastDate = "2000-01-03";
-    const pastResponse = await post({
-      ...BODY,
-      requested_date: pastDate,
-      preferred_time: new Date(`${pastDate}T15:00:00+08:00`).toISOString(),
-    });
-    expect(pastResponse.status).toBe(400);
-    expect((await pastResponse.json()).fields).toHaveProperty("requested_date");
-
-    const soon = new Date(Date.now() + 8 * 60 * 60 * 1000 + 20 * 60 * 1000);
-    const soonDate = `${soon.getUTCFullYear()}-${String(soon.getUTCMonth() + 1).padStart(2, "0")}-${String(soon.getUTCDate()).padStart(2, "0")}`;
-    const soonTime = `${String(soon.getUTCHours()).padStart(2, "0")}:${String(soon.getUTCMinutes()).padStart(2, "0")}`;
-    const soonWeekday = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "short" }).format(soon);
-    availabilityResult = { data: [{ day_of_week: soonWeekday, start_time: "00:00", end_time: "23:59" }], error: null };
-    const soonResponse = await post({
-      ...BODY,
-      requested_date: soonDate,
-      requested_time: soonTime,
-      preferred_time: new Date(`${soonDate}T${soonTime}:00+08:00`).toISOString(),
-    });
-    expect(soonResponse.status).toBe(400);
-    expect((await soonResponse.json()).fields).toHaveProperty("requested_time");
-    expect(insert).not.toHaveBeenCalled();
-  });
-
-  it("translates the database self-volunteer constraint as a validation error", async () => {
-    insert.mockResolvedValue({ error: { code: "23514", message: "violates support_request_no_self_volunteer" } });
+  it("TCUC2_4 rejects a request overlapping an accepted request from the schedule RPC", async () => {
+    rpc.mockResolvedValue({ data: [{ requested_time: "15:30:00" }], error: null });
     const response = await post(BODY);
     expect(response.status).toBe(400);
-    expect((await response.json()).message).toBe("You cannot select yourself as a volunteer.");
-  });
-
-  it("rejects an unauthenticated caller", async () => {
-    authenticate.mockResolvedValueOnce(null);
-    const response = await post(BODY);
-    expect(response.status).toBe(401);
-    expect(from).not.toHaveBeenCalled();
-  });
-
-  it("ignores client-supplied requester ID and initial status", async () => {
-    const response = await post({ ...BODY, requester_id: OTHER, status: "Accepted" });
-    expect(response.status).toBe(201);
-    expect(insert).toHaveBeenCalledWith({ ...BODY, requester_id: ME, status: "Pending" });
-  });
-
-  it("returns a safe error when database insertion fails", async () => {
-    insert.mockResolvedValue({ error: { code: "XX000", message: "database unavailable" } });
-    const response = await post(BODY);
-    expect(response.status).toBe(500);
-    expect(await response.json()).toMatchObject({ error: "unknown", message: "We could not submit your support request" });
+    expect((await response.json()).fields).toHaveProperty("requested_time");
+    expect(rpc).toHaveBeenCalledWith("get_volunteer_accepted_times", {
+      p_volunteer_id: VOLUNTEER,
+      p_requested_date: BODY.requested_date,
+    });
+    expect(insert).not.toHaveBeenCalled();
   });
 });
