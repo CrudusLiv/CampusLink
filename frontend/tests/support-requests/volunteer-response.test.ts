@@ -23,7 +23,7 @@ function makeQuery() {
   return query;
 }
 
-describe("TCUC2_33 saves an accepted response", () => {
+describe("TCUC2_26 saves an accepted response", () => {
   let query: ReturnType<typeof makeQuery>;
   let db: Parameters<typeof saveVolunteerResponse>[0];
 
@@ -51,7 +51,7 @@ describe("TCUC2_33 saves an accepted response", () => {
   });
 });
 
-describe("TCUC2_34 saves a declined response", () => {
+describe("TCUC2_27 saves a declined response", () => {
   let query: ReturnType<typeof makeQuery>;
   let db: Parameters<typeof saveVolunteerResponse>[0];
 
@@ -78,7 +78,7 @@ describe("TCUC2_34 saves a declined response", () => {
     });
 });
 
-describe("TCUC2_35 Handle a failed response update", () => {
+describe("TCUC2_28 Handle a failed response update", () => {
   let query: ReturnType<typeof makeQuery>;
   let db: Parameters<typeof saveVolunteerResponse>[0];
 

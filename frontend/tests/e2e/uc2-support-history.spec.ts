@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { evidence, signInAs } from "./helpers";
 
-test("TCUC2_42 views support request history as a student", async ({ page }) => {
+test("TCUC2_35 views support request history as a student", async ({ page }) => {
   const volunteerEmail = process.env.CL_EMAIL;
   const volunteerPassword = process.env.CL_PW;
   const studentEmail = process.env.CL_STUDENT_EMAIL;
@@ -27,7 +27,7 @@ test("TCUC2_42 views support request history as a student", async ({ page }) => 
     String(date.getMonth() + 1).padStart(2, "0"),
     String(date.getDate()).padStart(2, "0"),
   ].join("-");
-  const title = `TCUC2_42 history request ${Date.now()}`;
+  const title = `TCUC2_35 history request ${Date.now()}`;
 
   const response = await page.request.post("/api/support-requests", {
     headers: { Authorization: `Bearer ${student.access_token}` },
@@ -63,7 +63,7 @@ test("TCUC2_42 views support request history as a student", async ({ page }) => 
   await evidence(page, "TCUC2_35");
 });
 
-test("TCUC2_43 views support request history as a volunteer", async ({ page }) => {
+test("TCUC2_36 views support request history as a volunteer", async ({ page }) => {
   const volunteerEmail = process.env.CL_EMAIL;
   const volunteerPassword = process.env.CL_PW;
   const studentEmail = process.env.CL_STUDENT_EMAIL;
@@ -87,7 +87,7 @@ test("TCUC2_43 views support request history as a volunteer", async ({ page }) =
     String(date.getMonth() + 1).padStart(2, "0"),
     String(date.getDate()).padStart(2, "0"),
   ].join("-");
-  const title = `TCUC2_43 history request ${Date.now()}`;
+  const title = `TCUC2_36 history request ${Date.now()}`;
 
   const response = await page.request.post("/api/support-requests", {
     headers: { Authorization: `Bearer ${student.access_token}` },
@@ -115,14 +115,14 @@ test("TCUC2_43 views support request history as a volunteer", async ({ page }) =
 
   await page.goto("/volunteer/history");
 
-  const historyCard = page.locator("li").filter({ hasText: title });
-  await expect(historyCard).toBeVisible({ timeout: 60_000 });
-  await expect(historyCard).toContainText("Accepted");
+  const historyRow = page.getByRole("row").filter({ hasText: title });
+  await expect(historyRow).toBeVisible({ timeout: 60_000 });
+  await expect(historyRow).toContainText("Accepted");
 
-  await evidence(page, "TCUC2_43");
+  await evidence(page, "TCUC2_36");
 });
 
-test("TCUC2_44 shows the empty request history screen", async ({ page }) => {
+test("TCUC2_37 shows the empty request history screen", async ({ page }) => {
   const studentEmail = process.env.CL_STUDENT_EMAIL;
   const studentPassword = process.env.CL_STUDENT_PW;
 
@@ -146,5 +146,5 @@ test("TCUC2_44 shows the empty request history screen", async ({ page }) => {
     page.getByText("Your support requests will appear here.", { exact: true }),
   ).toBeVisible({ timeout: 60_000 });
 
-  await evidence(page, "TCUC2_44");
+  await evidence(page, "TCUC2_37");
 });

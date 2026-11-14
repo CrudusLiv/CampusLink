@@ -24,7 +24,7 @@ function makeQuery(result: unknown): MockQuery {
   return query;
 }
 
-describe("TCUC2_32 loads only the volunteer's pending requests", () => {
+describe("TCUC2_25 loads only the volunteer's pending requests", () => {
   let db: Parameters<typeof loadVolunteerRequests>[0];
   let requestQuery: MockQuery;
   let requesterQuery: MockQuery;
@@ -71,7 +71,7 @@ describe("TCUC2_32 loads only the volunteer's pending requests", () => {
     }]);
   });
 
-  it("TCUC2_39 loads the volunteer's support request history", async () => {
+  it("TCUC2_32 loads the volunteer's support request history", async () => {
     const result = await loadVolunteerRequests(db, "history", VOLUNTEER_ID);
 
     expect(requestQuery.eq).toHaveBeenCalledWith("volunteer_id", VOLUNTEER_ID);
