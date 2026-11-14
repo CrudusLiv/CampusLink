@@ -8,9 +8,10 @@ describe("TCUC2_13 weekly availability matching", () => {
   ];
 
   it.each([
-    ["matches the slot start time", "Mon", "10:00", true],
-    ["matches a time inside the slot", "Mon", "11:59", true],
-    ["does not match the slot end time", "Mon", "12:00", false],
+    ["matches at the slot start", "Mon", "10:00", true],
+    ["matches when the booking ends at the slot end", "Mon", "11:00", true],
+    ["does not match when the booking exceeds the slot by one minute", "Mon", "11:01", false],
+    ["does not match at the slot end", "Mon", "12:00", false],
     ["does not match a different day", "Wed", "11:00", false],
   ])("%s", (_caseName, day, time, expected) => {
     expect(matchesWeeklyAvailability(availability, day, time)).toBe(expected);

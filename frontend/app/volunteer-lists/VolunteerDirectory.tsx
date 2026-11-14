@@ -90,6 +90,19 @@ export default function VolunteerDirectory() {
     [volunteers],
   );
   const days = useMemo(() => [...new Set(volunteers.flatMap((volunteer) => volunteer.availability.map((slot) => slot.day)))], [volunteers]);
+  const timeSlotLabel = useMemo(() => {
+    if (!time) return "";
+    const [hours, minutes] = time.split(":").map(Number);
+    const start = hours * 60 + minutes;
+    const format = (totalMinutes: number) => {
+      const normalized = ((totalMinutes % (24 * 60)) + (24 * 60)) % (24 * 60);
+      const hour = Math.floor(normalized / 60);
+      const twelveHour = hour % 12 || 12;
+      const period = hour < 12 ? "AM" : "PM";
+      return `${twelveHour}:${String(normalized % 60).padStart(2, "0")} ${period}`;
+    };
+    return `${format(start)} - ${format(start + 60)}`;
+  }, [time]);
 
   const otherVolunteers = withoutOwnVolunteer(volunteers, currentUserId);
   const filtered = otherVolunteers.filter((volunteer) => {
@@ -150,17 +163,25 @@ export default function VolunteerDirectory() {
               {faculties.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
           </label>
-          <label className={styles.filterLabel}>Weekly availability
-            <select value={day} onChange={(event) => setDay(event.target.value)}>
-              <option value="">Any day</option>
-              {day && !days.includes(day) && <option value={day}>{day}</option>}
-              {days.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-          </label>
+          <div className={styles.availabilityFilters}>
+            <label className={styles.filterLabel}>Weekly availability
+              <select value={day} onChange={(event) => setDay(event.target.value)}>
+                <option value="">Any day</option>
+                {day && !days.includes(day) && <option value={day}>{day}</option>}
+                {days.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+            </label>
+            <label className={styles.filterLabel}>Time
+              <input
+                type="time"
+                value={time}
+                onChange={(event) => setTime(event.target.value)}
+                aria-label="Filter volunteers by availability time"
+              />
+              {timeSlotLabel && <span className={styles.timeSlot} aria-live="polite">Time Slot: {timeSlotLabel}</span>}
+            </label>
+          </div>
         </div>
-        {(requestDate || supportMode) && <p className={styles.requestPreference}>
-          Matching request{requestDate ? ` for ${requestDate}` : ""}{time ? ` at ${time}` : ""}{supportMode ? ` · ${supportMode}` : ""}
-        </p>}
       </div>
 
       <div className={styles.resultLine} aria-live="polite">

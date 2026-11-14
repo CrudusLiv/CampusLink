@@ -47,13 +47,20 @@ export function matchesWeeklyAvailability(
   day: string,
   time: string,
 ) {
-  if (!day) return true;
+  if (!day && !time) return true;
 
   return availability.some((slot) => {
-    if (slot.day !== day) return false;
+    if (day && slot.day !== day) return false;
     if (!time) return true;
 
-    const selected = time.slice(0, 5);
-    return slot.start.slice(0, 5) <= selected && selected < slot.end.slice(0, 5);
+    if (!day) return true;
+
+    const minutes = (value: string) => {
+      const [hours, mins] = value.slice(0, 5).split(":").map(Number);
+      return hours * 60 + mins;
+    };
+    const requestedStart = minutes(time);
+    return minutes(slot.start) <= requestedStart
+      && requestedStart + SLOT_MINUTES <= minutes(slot.end);
   });
 }
