@@ -82,6 +82,12 @@ export default function VolunteerProfile({ userId }: { userId: string }) {
     params.set("volunteerName", profile.name);
     if (profile.photo_url) params.set("volunteerPhoto", profile.photo_url);
     if (category) params.set("category", category);
+    const requestId = params.get("requestId");
+    if (params.get("from") === "change-volunteer" && requestId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
+      params.set("from", "change-volunteer");
+      router.push(`/support-requests/${requestId}?mode=change-volunteer&${params.toString()}`);
+      return;
+    }
     params.set("from", "volunteer-lists");
     router.push(`/sessions/ask-for-support?${params.toString()}`);
   }
@@ -137,7 +143,7 @@ export default function VolunteerProfile({ userId }: { userId: string }) {
         <aside className={styles.availabilityPanel}>
           <h2>Availability</h2>
           {weeklyAvailability.length ? <ul>{weeklyAvailability.map((item) => <li key={item}>{item}</li>)}</ul> : <p className={styles.muted}>Weekly availability hasn&apos;t been added.</p>}
-          <button type="button" className={`${styles.requestButton} ${requestAction.disabled ? styles.requestButtonDisabled : ""}`} disabled={requestAction.disabled} onClick={handleMakeRequest}>Make a Request</button>
+          <button type="button" className={`${styles.requestButton} ${requestAction.disabled ? styles.requestButtonDisabled : ""}`} disabled={requestAction.disabled} onClick={handleMakeRequest}>{new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("from") === "change-volunteer" ? "Choose Volunteer" : "Make a Request"}</button>
           {requestAction.message && <p className={styles.selfRequestError} role="alert">{requestAction.message}</p>}
         </aside>
       </div>

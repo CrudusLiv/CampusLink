@@ -13,6 +13,10 @@
 .table tbody tr:last-child td { border-bottom: 0; }
 .requestTitle { min-width: 180px; color: #111827 !important; font-weight: 600; }
 .actionCell { position: relative; }
+.actionButton { position: relative; }
+.alertIndicator { position: absolute; top: -0.4rem; right: -0.35rem; display: grid; width: 1rem; height: 1rem; place-items: center; border: 1px solid #fff; border-radius: 50%; background: #dc2626; color: #fff; font-size: 0.7rem; font-weight: 800; line-height: 1; }
+.changeVolunteerItem { position: relative; }
+.changeVolunteerItem .alertIndicator { top: 0.25rem; right: 0.35rem; }
 .actionButton { padding: 0.3rem 0.7rem; border: 1px solid #a1a1aa; border-radius: 9999px; background: #fff; color: #27272a; font: inherit; font-size: 0.75rem; cursor: pointer; white-space: nowrap; }
 .actionButton:hover { background: #f4f4f5; }
 .actionButton:disabled { opacity: 0.6; cursor: wait; }
