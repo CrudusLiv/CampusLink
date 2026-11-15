@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import RequestStatusBadge from "@/components/support-requests/RequestStatusBadge";
+import SupportRequestSuccessToast from "@/components/support-requests/SupportRequestSuccessToast";
 import type { SupportRequestStatus } from "@/lib/support-requests/history";
 import styles from "./support-requests.module.css";
 
@@ -21,6 +22,9 @@ type RequestRow = {
   support_mode: string | null;
   volunteer_id: string | null;
   volunteer_name: string | null;
+  volunteer_assigned_at: string | null;
+  assignment_version: number;
+  has_current_no_response: boolean;
   status: SupportRequestStatus;
 };
 
@@ -32,7 +36,7 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(new Date(value));
 }
 
-export default function SupportRequestsTable({ showSubmittedToast = false }: { showSubmittedToast?: boolean }) {
+export default function SupportRequestsTable({ showSubmittedToast = false, showVolunteerChangedToast = false }: { showSubmittedToast?: boolean; showVolunteerChangedToast?: boolean }) {
   const router = useRouter();
   const { profile } = useCurrentUser();
   const [requests, setRequests] = useState<RequestRow[]>([]);
@@ -46,10 +50,10 @@ export default function SupportRequestsTable({ showSubmittedToast = false }: { s
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!showSubmittedToast) return;
-    const timer = setTimeout(() => router.replace("/support-requests", { scroll: false }), 2000);
+    if (!showSubmittedToast && !showVolunteerChangedToast) return;
+    const timer = setTimeout(() => router.replace("/support-requests", { scroll: false }), showVolunteerChangedToast ? 3000 : 2000);
     return () => clearTimeout(timer);
-  }, [router, showSubmittedToast]);
+  }, [router, showSubmittedToast, showVolunteerChangedToast]);
 
   useEffect(() => {
     if (!profile) return;
@@ -60,7 +64,7 @@ export default function SupportRequestsTable({ showSubmittedToast = false }: { s
       setError("");
       const { data, error: queryError } = await supabase
         .from("support_request")
-        .select("request_id, title, description, category, created_at, requested_date, requested_time, support_mode, volunteer_id, status")
+        .select("request_id, title, description, category, created_at, requested_date, requested_time, support_mode, volunteer_id, volunteer_assigned_at, assignment_version, status")
         .eq("requester_id", profile!.user_id)
         .order("created_at", { ascending: false });
 
@@ -73,9 +77,15 @@ export default function SupportRequestsTable({ showSubmittedToast = false }: { s
 
       const rows = data ?? [];
       const volunteerIds = [...new Set(rows.map((row) => row.volunteer_id).filter((id): id is string => Boolean(id)))];
-      const { data: volunteers, error: volunteerError } = volunteerIds.length
-        ? await supabase.from("users").select("user_id, name").in("user_id", volunteerIds)
-        : { data: [], error: null };
+      const requestIds = rows.map((row) => row.request_id);
+      const [{ data: volunteers, error: volunteerError }, { data: reminders, error: reminderError }] = await Promise.all([
+        volunteerIds.length
+          ? supabase.from("users").select("user_id, name").in("user_id", volunteerIds)
+          : Promise.resolve({ data: [], error: null }),
+        requestIds.length
+          ? supabase.from("notification").select("request_id, event_key").eq("type", "request_no_response").in("request_id", requestIds)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
 
       if (cancelled) return;
       if (volunteerError) {
@@ -83,19 +93,55 @@ export default function SupportRequestsTable({ showSubmittedToast = false }: { s
         setLoading(false);
         return;
       }
+      if (reminderError) {
+        setError("We couldn't load response reminders for your requests.");
+        setLoading(false);
+        return;
+      }
 
       const volunteerNames = new Map((volunteers ?? []).map((volunteer) => [volunteer.user_id, volunteer.name]));
+      const reminderKeys = new Set((reminders ?? []).map((notice) => `${notice.request_id}:${notice.event_key}`));
       setRequests(rows.map((row) => ({
         ...row,
         id: row.request_id,
         status: row.status as SupportRequestStatus,
         volunteer_name: row.volunteer_id ? volunteerNames.get(row.volunteer_id) ?? null : null,
+        has_current_no_response: reminderKeys.has(`${row.request_id}:request:${row.request_id}:no-response:${row.assignment_version}`),
       })));
       setLoading(false);
     }
 
     loadRequests();
     return () => { cancelled = true; };
+  }, [profile]);
+
+  useEffect(() => {
+    if (!profile) return;
+    const channel = supabase.channel(`support-request-actions:${profile.user_id}`)
+      .on("postgres_changes", {
+        event: "INSERT", schema: "public", table: "notification", filter: `user_id=eq.${profile.user_id}`,
+      }, (payload) => {
+        const notice = payload.new as { type?: string; request_id?: string | null; event_key?: string | null };
+        if (notice.type !== "request_no_response" || !notice.request_id || !notice.event_key) return;
+        setRequests((current) => current.map((request) => request.id === notice.request_id
+          && notice.event_key === `request:${request.id}:no-response:${request.assignment_version}`
+          ? { ...request, has_current_no_response: true } : request));
+      })
+      .on("postgres_changes", {
+        event: "UPDATE", schema: "public", table: "support_request", filter: `requester_id=eq.${profile.user_id}`,
+      }, (payload) => {
+        const updated = payload.new as { request_id?: string; status?: SupportRequestStatus; assignment_version?: number };
+        if (!updated.request_id) return;
+        setRequests((current) => current.map((request) => request.id !== updated.request_id ? request : {
+          ...request,
+          status: updated.status ?? request.status,
+          assignment_version: updated.assignment_version ?? request.assignment_version,
+          has_current_no_response: updated.assignment_version !== undefined && updated.assignment_version !== request.assignment_version
+            ? false : request.has_current_no_response,
+        }));
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
   }, [profile]);
 
   const visibleRequests = useMemo(
@@ -191,13 +237,15 @@ export default function SupportRequestsTable({ showSubmittedToast = false }: { s
   }
 
   if (!profile) return <main className={styles.content}>
-    {showSubmittedToast && <div className={styles.successToast} role="status" aria-live="polite"><span className={styles.successToastCheck} aria-hidden="true">✓</span><span>Your support request was submitted successfully.</span></div>}
+    {showSubmittedToast && <SupportRequestSuccessToast title="Your support request was submitted successfully." />}
+    {showVolunteerChangedToast && <SupportRequestSuccessToast title="Volunteer Changed Successfully!" description="Your support request has been successfully assigned to the new volunteer." />}
     <p className={styles.message}>Loading requests…</p>
   </main>;
 
   return (
     <main className={styles.content}>
-      {showSubmittedToast && <div className={styles.successToast} role="status" aria-live="polite"><span className={styles.successToastCheck} aria-hidden="true">✓</span><span>Your support request was submitted successfully.</span></div>}
+      {showSubmittedToast && <SupportRequestSuccessToast title="Your support request was submitted successfully." />}
+      {showVolunteerChangedToast && <SupportRequestSuccessToast title="Volunteer Changed Successfully!" description="Your support request has been successfully assigned to the new volunteer." />}
       <div className={styles.filters} role="group" aria-label="Filter requests by status">
         {FILTERS.map((item) => <button
           key={item}
@@ -232,7 +280,7 @@ export default function SupportRequestsTable({ showSubmittedToast = false }: { s
                       aria-haspopup="menu"
                       aria-expanded={actionMenu?.requestId === request.id}
                       onClick={(event) => toggleActionMenu(event, request.id)}
-                    >Actions ▾</button>
+                    >Actions <span aria-hidden="true">▾</span>{request.status === "Pending" && request.has_current_no_response && <span className={styles.alertIndicator} aria-label="No response for 24 hours">!</span>}</button>
                   </td>
                 </tr>)}
             </tbody>
@@ -251,6 +299,7 @@ export default function SupportRequestsTable({ showSubmittedToast = false }: { s
           {requests.find((request) => request.id === actionMenu.requestId)?.status === "Pending" ? <>
             <Link role="menuitem" href={`/support-requests/${actionMenu.requestId}?mode=view`} onClick={closeActionMenu}>View</Link>
             <Link role="menuitem" href={`/support-requests/${actionMenu.requestId}?mode=edit`} onClick={closeActionMenu}>Edit</Link>
+            {requests.find((request) => request.id === actionMenu.requestId)?.has_current_no_response && <Link role="menuitem" className={styles.changeVolunteerItem} href={`/support-requests/${actionMenu.requestId}?mode=change-volunteer`} onClick={closeActionMenu}>Change Volunteer<span className={styles.alertIndicator} aria-label="No response for 24 hours">!</span></Link>}
             <button
               type="button"
               role="menuitem"

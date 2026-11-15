@@ -12,9 +12,9 @@ export default async function SupportRequestPage({
   searchParams: Promise<{ mode?: string }>;
 }) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
-  const mode = query.mode === "edit" ? "edit" : "view";
+  const mode = query.mode === "edit" ? "edit" : query.mode === "change-volunteer" ? "change-volunteer" : "view";
   return (
-    <AppShell title={mode === "view" ? "View Support Request" : "Edit Support Request"}>
+    <AppShell title={mode === "view" ? "View Support Request" : mode === "edit" ? "Edit Support Request" : "Change Volunteer"}>
       <SupportRequestDetail requestId={id} mode={mode} />
     </AppShell>
   );

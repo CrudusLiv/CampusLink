@@ -7,10 +7,25 @@ import type { Page } from '@playwright/test';
 export const EVIDENCE_DIR = path.join(__dirname, 'evidence');
 
 function readEnvLocal(): Record<string, string> {
-  const text = readFileSync(path.join(__dirname, '..', '..', '.env.local'), 'utf8');
-  return Object.fromEntries(
-    text.split(/\r?\n/).filter((l) => l.includes('=')).map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).trim()]),
-  );
+  const text = readFileSync(path.resolve(__dirname, '..', '..', '.env.local'), 'utf8');
+  const env: Record<string, string> = {};
+
+  for (const line of text.replace(/^\uFEFF/, '').split(/\r?\n/)) {
+    const match = line.match(/^\s*(?:export\s+)?([^=]+?)\s*=\s*(.*)\s*$/);
+    if (!match) continue;
+
+    const key = match[1].trim();
+    let value = match[2].trim();
+    if ((value.startsWith("'") && value.endsWith("'")) || (value.startsWith('"') && value.endsWith('"'))) {
+      value = value.slice(1, -1);
+    }
+    env[key] = value;
+  }
+
+  const required = ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY'];
+  const missing = required.filter((key) => !env[key]);
+  if (missing.length) throw new Error(`Missing required .env.local variables: ${missing.join(', ')}`);
+  return env;
 }
 
 /** Signs in as the given account and installs its Supabase session in the browser. */

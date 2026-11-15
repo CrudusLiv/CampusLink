@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { evidence, signIn, signInAs } from "./helpers";
 
-test("TCUC2_27 accepts a pending support request", async ({ page }) => {
+test("TCUC2_20 accepts a pending support request", async ({ page }) => {
   const volunteerEmail = process.env.CL_EMAIL;
   const volunteerPassword = process.env.CL_PW;
   const studentEmail = process.env.CL_STUDENT_EMAIL;
@@ -26,7 +26,7 @@ test("TCUC2_27 accepts a pending support request", async ({ page }) => {
     String(requestedDateValue.getDate()).padStart(2, "0"),
   ].join("-");
   const title = `TCUC2_20 E2E request ${Date.now()}`;
-  const preferredTime = new Date(`${requestedDate}T10:00:00+08:00`).toISOString();
+  const preferredTime = new Date(`${requestedDate}T14:00:00+08:00`).toISOString();
 
   const createResponse = await page.request.post("/api/support-requests", {
     headers: { Authorization: `Bearer ${studentSession.access_token}` },
@@ -35,7 +35,7 @@ test("TCUC2_27 accepts a pending support request", async ({ page }) => {
       description: "Automated E2E test request.",
       category: "Programming",
       requested_date: requestedDate,
-      requested_time: "10:00",
+      requested_time: "14:00",
       support_mode: "Online",
       volunteer_id: volunteerSession.user.id,
       preferred_time: preferredTime,
@@ -56,13 +56,13 @@ test("TCUC2_27 accepts a pending support request", async ({ page }) => {
   await expect(requestCard).toHaveCount(0);
 
   await page.goto("/volunteer/history");
-  const historyCard = page.locator("li").filter({ hasText: title });
-  await expect(historyCard).toContainText("Accepted");
+  const historyRow = page.getByRole("row").filter({ hasText: title });
+  await expect(historyRow).toContainText("Accepted");
 
-  await evidence(page, "TCUC2_27");
+  await evidence(page, "TCUC2_20");
 });
 
-test("TCUC2_28 declines a pending support request", async ({ page }) => {
+test("TCUC2_21 declines a pending support request", async ({ page }) => {
   const volunteerEmail = process.env.CL_EMAIL;
   const volunteerPassword = process.env.CL_PW;
   const studentEmail = process.env.CL_STUDENT_EMAIL;
@@ -87,7 +87,7 @@ test("TCUC2_28 declines a pending support request", async ({ page }) => {
     String(requestedDateValue.getDate()).padStart(2, "0"),
   ].join("-");
   const title = `TCUC2_21 E2E request ${Date.now()}`;
-  const preferredTime = new Date(`${requestedDate}T10:00:00+08:00`).toISOString();
+  const preferredTime = new Date(`${requestedDate}T14:00:00+08:00`).toISOString();
 
   const createResponse = await page.request.post("/api/support-requests", {
     headers: { Authorization: `Bearer ${studentSession.access_token}` },
@@ -96,7 +96,7 @@ test("TCUC2_28 declines a pending support request", async ({ page }) => {
       description: "Automated E2E test request.",
       category: "Programming",
       requested_date: requestedDate,
-      requested_time: "10:00",
+      requested_time: "14:00",
       support_mode: "Online",
       volunteer_id: volunteerSession.user.id,
       preferred_time: preferredTime,
@@ -117,13 +117,13 @@ test("TCUC2_28 declines a pending support request", async ({ page }) => {
   await expect(requestCard).toHaveCount(0);
 
   await page.goto("/volunteer/history");
-  const historyCard = page.locator("li").filter({ hasText: title });
-  await expect(historyCard).toContainText("Declined");
+  const historyRow = page.getByRole("row").filter({ hasText: title });
+  await expect(historyRow).toContainText("Declined");
 
-  await evidence(page, "TCUC2_28");
+  await evidence(page, "TCUC2_21");
 });
 
-test("TCUC2_29 shows the empty incoming-requests screen", async ({ page }) => {
+test("TCUC2_22 shows the empty incoming-requests screen", async ({ page }) => {
   await signIn(page);
   await page.goto("/volunteer/requests");
 
@@ -131,5 +131,5 @@ test("TCUC2_29 shows the empty incoming-requests screen", async ({ page }) => {
     page.getByText("No incoming requests.", { exact: true })
   ).toBeVisible({ timeout: 60_000 });
 
-  await evidence(page, "TCUC2_29");
+  await evidence(page, "TCUC2_22");
 });

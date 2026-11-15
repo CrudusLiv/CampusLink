@@ -4,6 +4,7 @@ import { fieldErrors } from "@/lib/sessions/schemas";
 import { supportRequestCreateSchema } from "@/lib/support-requests/schema";
 import { isSelfVolunteerConstraintError } from "@/lib/support-requests/volunteers";
 import { klDateKey, TZ } from "@/lib/sessions/time";
+import { validateVolunteerEligibility } from "@/lib/support-requests/volunteer-eligibility";
 
 const SELF_VOLUNTEER_MESSAGE = "You cannot select yourself as a volunteer.";
 const ONE_HOUR_MS = 60 * 60 * 1000;
@@ -45,76 +46,36 @@ export async function POST(req: Request) {
   if (input.data.requested_date < klDateKey(new Date().toISOString())) {
     return fieldValidation("requested_date", "Choose today or a future date.");
   }
-  const [{ data: volunteer, error: volunteerError }, { data: availability, error: availabilityError }] = await Promise.all([
-    auth.db.from("volunteer_profile")
-      .select("skills, is_volunteer")
-      .eq("user_id", input.data.volunteer_id)
-      .maybeSingle(),
-    auth.db.from("availability")
-      .select("day_of_week, start_time, end_time")
-      .eq("user_id", input.data.volunteer_id),
-  ]);
-
-  if (volunteerError || availabilityError) {
-    console.error("POST /api/support-requests validation lookup failed:", volunteerError?.code, availabilityError?.code);
-    return fail(500, "unknown", "We could not verify the selected volunteer's details");
-  }
-  if (!volunteer?.is_volunteer) {
-    return fieldValidation("volunteer_id", "Choose an active volunteer.");
-  }
-  if (!(volunteer.skills ?? []).includes(input.data.category)) {
-    return fieldValidation("category", "The selected volunteer does not support this category.");
-  }
-
-  const requestDay = new Intl.DateTimeFormat("en-US", { timeZone: TZ, weekday: "short" }).format(requestedAt);
-  const dayAvailability = (availability ?? []).filter((slot) => slot.day_of_week === requestDay);
-  if (dayAvailability.length === 0) {
-    return fieldValidation("requested_date", "The selected volunteer is not available on this date.");
-  }
-  const requestedTime = input.data.requested_time.slice(0, 5);
-  const minutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
-  // A session lasts one hour, so the whole hour must fit inside the volunteer's availability.
-  const timeIsAvailable = dayAvailability.some((slot) =>
-    minutes(slot.start_time) <= minutes(requestedTime) && minutes(requestedTime) + 60 <= minutes(slot.end_time)
-  );
-  if (!timeIsAvailable) {
-    return fieldValidation("requested_time", "The selected volunteer is not available at this time.");
-  }
-
-  const { data: acceptedRequests, error: acceptedRequestsError } = await auth.db.rpc("get_volunteer_accepted_times", {
-    p_volunteer_id: input.data.volunteer_id,
-    p_requested_date: input.data.requested_date,
+  const eligibility = await validateVolunteerEligibility(auth.db, {
+    volunteerId: input.data.volunteer_id,
+    category: input.data.category,
+    requestedDate: input.data.requested_date,
+    requestedTime: input.data.requested_time,
   });
-
-  if (acceptedRequestsError) {
-    console.error("POST /api/support-requests conflict lookup failed:", acceptedRequestsError.code);
-    return fail(500, "unknown", "We could not verify the selected volunteer's schedule");
+  if (!eligibility.ok) {
+    if (eligibility.reason === "lookup") {
+      console.error("POST /api/support-requests volunteer validation lookup failed");
+      return fail(500, "unknown", "We could not verify the selected volunteer's availability and schedule");
+    }
+    if (eligibility.reason === "inactive") return fieldValidation("volunteer_id", "Choose an active volunteer.");
+    if (eligibility.reason === "category") return fieldValidation("category", "The selected volunteer does not support this category.");
+    if (eligibility.reason === "date") return fieldValidation("requested_date", "The selected volunteer is not available on this date.");
+    if (eligibility.reason === "time") return fieldValidation("requested_time", "The selected volunteer is not available at this time.");
+    if (eligibility.reason === "conflict") {
+      const acceptedTimes = eligibility.acceptedTimes as { requested_time: string }[];
+      const requestedTime = input.data.requested_time.slice(0, 5);
+      const minutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+      const requestedStart = minutes(requestedTime);
+      const conflictingStart = acceptedTimes.map((accepted) => minutes(accepted.requested_time)).find((start) => requestedStart < start + 60 && requestedStart + 60 > start)!;
+      const beforeLimit = conflictingStart - 59;
+      const nowInKualaLumpur = new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date());
+      const currentMinutes = Number(nowInKualaLumpur.find((part) => part.type === "hour")?.value) * 60 + Number(nowInKualaLumpur.find((part) => part.type === "minute")?.value);
+      const canSuggestEarlier = beforeLimit > 0 && (input.data.requested_date !== klDateKey(new Date().toISOString()) || currentMinutes < beforeLimit);
+      const earlier = canSuggestEarlier ? `before ${formatMinuteOfDay(beforeLimit)} or ` : "";
+      return fieldValidation("requested_time", `This volunteer already has a request. Please choose a time ${earlier}after ${formatMinuteOfDay(conflictingStart + 60)}.`);
+    }
   }
 
-  const acceptedTimes = (acceptedRequests ?? []) as { requested_time: string }[];
-  const requestedStart = minutes(requestedTime);
-  const requestedEnd = requestedStart + 60;
-  const hasTimeConflict = acceptedTimes.some((accepted) => {
-    const acceptedStart = minutes(accepted.requested_time);
-    const acceptedEnd = acceptedStart + 60;
-    return requestedStart < acceptedEnd && requestedEnd > acceptedStart;
-  });
-  if (hasTimeConflict) {
-    const conflictingStart = acceptedTimes
-      .map((accepted) => minutes(accepted.requested_time))
-      .find((acceptedStart) => requestedStart < acceptedStart + 60 && requestedEnd > acceptedStart);
-    const beforeLimit = conflictingStart! - 59;
-    const nowInKualaLumpur = new Intl.DateTimeFormat("en-GB", {
-      timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23",
-    }).formatToParts(new Date());
-    const currentMinutes = Number(nowInKualaLumpur.find((part) => part.type === "hour")?.value) * 60
-      + Number(nowInKualaLumpur.find((part) => part.type === "minute")?.value);
-    const canSuggestEarlier = beforeLimit > 0
-      && (input.data.requested_date !== klDateKey(new Date().toISOString()) || currentMinutes < beforeLimit);
-    const earlier = canSuggestEarlier ? `before ${formatMinuteOfDay(beforeLimit)} or ` : "";
-    const later = `after ${formatMinuteOfDay(conflictingStart! + 60)}`;
-    return fieldValidation("requested_time", `This volunteer already has a request. Please choose a time ${earlier}${later}.`);
-  }
   if (requestedAt.getTime() < Date.now() + ONE_HOUR_MS) {
     return fieldValidation("requested_time", "Choose a time at least 1 hour from now.");
   }

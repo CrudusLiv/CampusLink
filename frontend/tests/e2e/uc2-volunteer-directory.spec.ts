@@ -5,7 +5,7 @@ test("TCUC2_10 searches volunteers by name", async ({ page }) => {
   await signIn(page);
   await page.goto("/volunteer-lists");
 
-  const volunteerCards = page.locator("li[aria-pressed]");
+  const volunteerCards = page.locator("li > div[role='button'][aria-pressed]");
   await expect(volunteerCards.first()).toBeVisible({ timeout: 60_000 });
 
   const volunteerName = await volunteerCards.first().locator("h2").innerText();
@@ -25,7 +25,7 @@ test("TCUC2_15 filters volunteers by skill", async ({ page }) => {
   await signIn(page);
   await page.goto("/volunteer-lists");
 
-  const volunteerCards = page.locator("li[aria-pressed]");
+  const volunteerCards = page.locator("li > div[role='button'][aria-pressed]");
   await expect(volunteerCards.first()).toBeVisible({ timeout: 60_000 });
 
   let skill = "";
@@ -65,7 +65,7 @@ test("TCUC2_16 filters volunteers by faculty", async ({ page }) => {
   await signIn(page);
   await page.goto("/volunteer-lists");
 
-  const volunteerCards = page.locator("li[aria-pressed]");
+  const volunteerCards = page.locator("li > div[role='button'][aria-pressed]");
   await expect(volunteerCards.first()).toBeVisible({ timeout: 60_000 });
 
   let faculty = "";
@@ -104,7 +104,7 @@ test("TCUC2_17 filters volunteers by requested weekday and time", async ({ page 
   let day = "";
   let time = "";
 
-  const volunteerCards = page.locator("li[aria-pressed]");
+  const volunteerCards = page.locator("li > div[role='button'][aria-pressed]");
   await expect(volunteerCards.first()).toBeVisible({ timeout: 60_000 });
 
   for (let i = 0; i < await volunteerCards.count(); i++) {
@@ -146,7 +146,7 @@ test("TCUC2_18 combines directory filters", async ({ page }) => {
   await signIn(page);
   await page.goto("/volunteer-lists");
 
-  const volunteerCards = page.locator("li[aria-pressed]");
+  const volunteerCards = page.locator("li > div[role='button'][aria-pressed]");
   await expect(volunteerCards.first()).toBeVisible({ timeout: 60_000 });
 
   let name = "";

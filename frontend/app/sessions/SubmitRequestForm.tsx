@@ -21,7 +21,7 @@ export type ExistingSupportRequest = {
   volunteer_name: string | null;
 };
 
-type FormMode = "create" | "view" | "edit";
+type FormMode = "create" | "view" | "edit" | "change-volunteer";
 type FormInitialValues = {
   selectedCategory: string;
   title: string;
@@ -120,8 +120,12 @@ function localDateValue(date: Date) {
 
 function isWithinSlot(time: string, start: string, end: string) {
   if (!time) return true;
-  const selected = time.slice(0, 5);
-  return start.slice(0, 5) <= selected && selected < end.slice(0, 5);
+  const minutes = (value: string) => {
+    const [hour, minute] = value.slice(0, 5).split(":").map(Number);
+    return hour * 60 + minute;
+  };
+  const selectedStart = minutes(time);
+  return minutes(start) <= selectedStart && selectedStart + 60 <= minutes(end);
 }
 
 export function SubmitRequestForm(props: { mode?: FormMode; request?: ExistingSupportRequest; canEdit?: boolean }) {
@@ -147,18 +151,19 @@ export function SubmitRequestForm(props: { mode?: FormMode; request?: ExistingSu
     try { initialValues = JSON.parse(snapshot) as FormInitialValues; } catch { initialValues = EMPTY_FORM_VALUES; }
   }
   const key = mode === "create" ? `create:${snapshot}` : `${mode}:${JSON.stringify(props.request ?? null)}`;
-  return <SubmitRequestFormContent key={key} {...props} mode={mode} initialValues={initialValues} initialReady={mode !== "create" || Boolean(snapshot)} />;
+  return <SubmitRequestFormContent key={key} {...props} mode={mode} search={search} initialValues={initialValues} initialReady={mode !== "create" || Boolean(snapshot)} />;
 }
 
-function SubmitRequestFormContent({ mode = "create", request, canEdit = true, initialValues, initialReady }: {
+function SubmitRequestFormContent({ mode = "create", request, canEdit = true, search, initialValues, initialReady }: {
   mode?: FormMode;
   request?: ExistingSupportRequest;
   canEdit?: boolean;
+  search: string;
   initialValues: FormInitialValues;
   initialReady: boolean;
 }) {
   const router = useRouter();
-  const readOnly = mode === "view";
+  const readOnly = mode === "view" || mode === "change-volunteer";
   const [selectedCategory, setSelectedCategory] = useState<string>(initialValues.selectedCategory);
   const [title, setTitle] = useState<string>(initialValues.title);
   const [description, setDescription] = useState<string>(initialValues.description);
@@ -199,17 +204,37 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
     if (selectedCategory) params.set("skill", selectedCategory);
     if (date) params.set("date", date);
     if (time) params.set("time", time);
-    if (supportMode) params.set("mode", supportMode);
-    params.set("from", "ask-for-support");
+    if (supportMode) params.set(mode === "change-volunteer" ? "supportMode" : "mode", supportMode);
+    if (mode === "change-volunteer" && request) {
+      params.set("requestId", request.id);
+      if (request.volunteer_id) params.set("excludeVolunteerId", request.volunteer_id);
+      if (request.volunteer_id) params.set("selectedVolunteer", request.volunteer_id);
+    }
+    params.set("from", mode === "change-volunteer" ? "change-volunteer" : "ask-for-support");
     const query = params.toString();
     router.push(`/volunteer-lists${query ? `?${query}` : ""}`);
   }
+
+  useEffect(() => {
+    if (mode !== "change-volunteer" || !request) return;
+    const params = new URLSearchParams(search);
+    const volunteerId = params.get("volunteerId");
+    const volunteerName = params.get("volunteerName");
+    if (volunteerId && volunteerName && volunteerId !== request.volunteer_id) {
+      setChosenVolunteer({ id: volunteerId, name: volunteerName, category: params.get("category") ?? request.category, photoUrl: params.get("volunteerPhoto") });
+      setVolunteerChoice("choose");
+    }
+  }, [mode, request, search]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isSubmitting.current) return;
     setSubmitError("");
     if (mode === "view") return;
+    if (mode === "change-volunteer" && (!request || !chosenVolunteer || chosenVolunteer.id === request.volunteer_id)) {
+      setSubmitError("Choose a different volunteer before confirming the change.");
+      return;
+    }
     const requiredFields: { field: string; value: string; message: string }[] = [
       { field: "category", value: selectedCategory, message: "Please select a category." },
       { field: "title", value: title.trim(), message: "Please fill out this field." },
@@ -217,7 +242,7 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
       { field: "date", value: date, message: "Please select a date." },
       { field: "time", value: time, message: "Please select a time." },
       { field: "supportMode", value: supportMode, message: "Please select a support mode." },
-      ...(mode === "create" ? [{ field: "volunteer", value: chosenVolunteer?.id ?? "", message: "Please select a volunteer." }] : []),
+      ...(["create", "change-volunteer"].includes(mode) ? [{ field: "volunteer", value: chosenVolunteer?.id ?? "", message: "Please select a volunteer." }] : []),
     ];
     const missing = requiredFields.find((field) => !field.value);
     if (missing) {
@@ -232,7 +257,7 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
       setLoading(false);
       isSubmitting.current = false;
     };
-    if (mode === "create" && volunteerChoice === "choose" && chosenVolunteer) {
+    if ((mode === "create" || mode === "change-volunteer") && volunteerChoice === "choose" && chosenVolunteer) {
       let volunteerProfile;
       let volunteerSlots;
       let profileError;
@@ -269,13 +294,13 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
         return;
       }
     }
-    if (date < localDateValue(new Date())) {
+    if (mode !== "change-volunteer" && date < localDateValue(new Date())) {
       failValidation("date", "Please select today or a future date.");
       return;
     }
     const selectedDateTime = new Date(`${date}T${time}:00+08:00`);
-    if (!date || !time || Number.isNaN(selectedDateTime.getTime()) || (mode !== "create" && selectedDateTime.getTime() < Date.now() + 60 * 60 * 1000)) {
-      failValidation("time", "Please choose a time at least 1 hour from now.");
+    if (!date || !time || Number.isNaN(selectedDateTime.getTime()) || (mode !== "create" && mode !== "change-volunteer" && selectedDateTime.getTime() < Date.now() + 60 * 60 * 1000)) {
+      failValidation("time", "Choose a time at least 1 hour from now.");
       return;
     }
     const authResult = await supabase.auth.getUser().catch(() => null);
@@ -315,6 +340,15 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
       : await (async () => {
         try {
           const { data: sessionData } = await supabase.auth.getSession();
+          if (mode === "change-volunteer" && request && chosenVolunteer) {
+            const response = await fetch(`/api/support-requests/${request.id}/reassign`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", ...(sessionData.session?.access_token ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}) },
+              body: JSON.stringify({ expectedVolunteerId: request.volunteer_id, volunteerId: chosenVolunteer.id }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            return { data: response.ok ? { request_id: request.id } : null, error: response.ok ? null : { code: "API_ERROR", message: payload.message ?? "Volunteer replacement failed.", details: "" } };
+          }
           const response = await fetch("/api/support-requests", {
             method: "POST",
             headers: {
@@ -324,7 +358,7 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
             body: JSON.stringify(requestValues),
           });
           const payload = await response.json().catch(() => ({}));
-          return { data: null, error: response.ok ? null : { code: response.status === 400 && payload.fields?.volunteer_id === "You cannot select yourself as a volunteer." ? "SELF_VOLUNTEER" : response.status === 400 && payload.fields?.requested_time?.includes("already has a request") ? "VOLUNTEER_TIME_CONFLICT" : "API_ERROR", message: payload.fields?.requested_time ?? payload.message ?? "Request submission failed.", details: "" } };
+          return { data: null, error: response.ok ? null : { code: response.status === 400 && payload.fields?.volunteer_id === "You cannot select yourself as a volunteer." ? "SELF_VOLUNTEER" : response.status === 400 && payload.fields?.requested_time?.includes("already has a request") ? "VOLUNTEER_TIME_CONFLICT" : response.status === 400 && payload.fields?.requested_time === "Choose a time at least 1 hour from now." ? "TIME_TOO_SOON" : "API_ERROR", message: payload.fields?.requested_time ?? payload.message ?? "Request submission failed.", details: "" } };
         } catch {
           return { data: null, error: { code: "NETWORK_ERROR", message: "Network error. Please check your connection and try again.", details: "" } };
         }
@@ -338,6 +372,8 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
         setSubmitError("You cannot select yourself as a volunteer.");
       } else if (error.code === "VOLUNTEER_TIME_CONFLICT") {
         setValidationError({ field: "time", message: error.message });
+      } else if (error.code === "TIME_TOO_SOON") {
+        setValidationError({ field: "time", message: "Choose a time at least 1 hour from now." });
       } else if (error.code === "42P01" || error.code === "PGRST205") {
         setSubmitError("Support request storage is not set up yet. Apply the support_request migration, then try again.");
       } else if (error.code === "42501") {
@@ -345,7 +381,7 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
       } else if (error.code === "23503") {
         setSubmitError("The selected volunteer is no longer available. Choose another volunteer and try again.");
       } else {
-        setSubmitError(`We couldn't ${mode === "edit" ? "save your changes" : "submit your request"}: ${error.message}`);
+        setSubmitError(`We couldn't ${mode === "edit" ? "save your changes" : mode === "change-volunteer" ? "change the volunteer" : "submit your request"}: ${error.message}`);
       }
       return;
     }
@@ -358,6 +394,10 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
     if (mode === "create") {
       try { sessionStorage.removeItem(ASK_SUPPORT_DRAFT_KEY); } catch { /* Ignore unavailable browser storage. */ }
       router.push("/support-requests?submitted=1");
+      return;
+    }
+    if (mode === "change-volunteer") {
+      router.push("/support-requests?volunteerChanged=1");
       return;
     }
     router.push("/support-requests");
@@ -463,11 +503,11 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
             </div>
           </div>
 
-          {mode === "create" && <div className={styles.volunteerSection}>
+          {(mode === "create" || mode === "change-volunteer") && <div className={styles.volunteerSection}>
             <label className={styles.label}>Volunteer</label>
             {validationError?.field === "volunteer" && <p className={styles.validationTooltip} role="alert">{validationError.message}</p>}
             <div className={styles.toggleButtons}>
-              <button type="button" className={`${styles.toggleBtn} ${volunteerChoice === "choose" ? styles.toggleBtnActive : ""}`} onClick={chooseVolunteer} disabled={loading}>Choose Volunteer</button>
+              <button type="button" className={`${styles.toggleBtn} ${volunteerChoice === "choose" ? styles.toggleBtnActive : ""}`} onClick={chooseVolunteer} disabled={loading}>{mode === "change-volunteer" ? "Change Volunteer" : "Choose Volunteer"}</button>
             </div>
             {chosenVolunteer && volunteerChoice === "choose" && <div className={styles.matchCard}>
               {chosenVolunteer.photoUrl ? (
@@ -480,12 +520,15 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
               </div>
               <span className={styles.matchSelectedBadge}>Selected</span>
             </div>}
+            {mode === "change-volunteer" && chosenVolunteer?.id === request?.volunteer_id && <p className={styles.formError}>Choose someone different from the currently assigned volunteer.</p>}
           </div>}
 
           {submitError && <p className={styles.formError} role="alert">{submitError}</p>}
           {mode === "view" && canEdit ? (
             <button type="button" className={styles.submitBtn} onClick={() => router.push(`/support-requests/${request?.id}?mode=edit`)}>Edit Request</button>
-          ) : mode === "view" ? null : (
+          ) : mode === "view" ? null : mode === "change-volunteer" ? (
+            <button type="button" className={styles.submitBtn} disabled={loading || !chosenVolunteer || chosenVolunteer.id === request?.volunteer_id} onClick={() => void handleSubmit({ preventDefault() {} } as React.FormEvent)}>{loading ? "Changing volunteer..." : "Confirm New Volunteer"}</button>
+          ) : (
             <button type="submit" className={styles.submitBtn} disabled={loading}>
               {loading ? (mode === "edit" ? "Saving..." : "Submitting...") : mode === "edit" ? "Save edit" : "Submit request"}
             </button>

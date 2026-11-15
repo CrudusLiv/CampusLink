@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import styles from "../support-requests.module.css";
 
-export default function SupportRequestDetail({ requestId, mode }: { requestId: string; mode: "view" | "edit" }) {
+export default function SupportRequestDetail({ requestId, mode }: { requestId: string; mode: "view" | "edit" | "change-volunteer" }) {
   const { profile } = useCurrentUser();
   const [request, setRequest] = useState<ExistingSupportRequest | null>(null);
   const [canEdit, setCanEdit] = useState(false);
@@ -33,8 +33,8 @@ export default function SupportRequestDetail({ requestId, mode }: { requestId: s
         setLoading(false);
         return;
       }
-      if (mode === "edit" && data.status !== "Pending") {
-        setError("Only pending requests can be edited.");
+      if ((mode === "edit" || mode === "change-volunteer") && data.status !== "Pending") {
+        setError(mode === "edit" ? "Only pending requests can be edited." : "Only pending requests can change volunteers.");
         setLoading(false);
         return;
       }
@@ -77,7 +77,7 @@ export default function SupportRequestDetail({ requestId, mode }: { requestId: s
   );
 
   return <main className={styles.content}>
-    {mode === "view" && <Link className={styles.backLink} href="/support-requests">← My Support Requests</Link>}
+    <Link className={styles.backLink} href="/support-requests">← Back to My Support Requests</Link>
     <SubmitRequestForm mode={mode} request={request} canEdit={canEdit} />
   </main>;
 }

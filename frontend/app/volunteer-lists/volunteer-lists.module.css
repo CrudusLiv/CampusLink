@@ -4,10 +4,13 @@
 .backLink:hover { text-decoration: underline; }
 .toolbar { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1rem; }
 .searchLabel { display: block; }
-.search, .filterLabel select { width: 100%; min-height: 42px; padding: 0.625rem 0.75rem; border: 1px solid #d4d4d8; border-radius: 0.375rem; background: #fff; color: #111827; font: inherit; font-size: 0.875rem; }
-.search:focus, .filterLabel select:focus { outline: 2px solid #3f3f46; outline-offset: 1px; }
+.search, .filterLabel select, .filterLabel input { width: 100%; min-height: 42px; padding: 0.625rem 0.75rem; border: 1px solid #d4d4d8; border-radius: 0.375rem; background: #fff; color: #111827; font: inherit; font-size: 0.875rem; }
+.search:focus, .filterLabel select:focus, .filterLabel input:focus { outline: 2px solid #3f3f46; outline-offset: 1px; }
+.search:disabled, .filterLabel select:disabled, .filterLabel input:disabled { border-color: #d4d4d8; background: #e4e4e7; color: #71717a; cursor: not-allowed; opacity: 1; }
 .filters { display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
+.availabilityFilters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.75rem; }
 .filterLabel { display: flex; flex-direction: column; gap: 0.375rem; color: #3f3f46; font-size: 0.75rem; font-weight: 600; }
+.timeSlot { min-height: 1rem; color: #71717a; font-size: 0.75rem; font-weight: 400; }
 .resultLine { min-height: 1.25rem; margin-bottom: 0.75rem; color: #71717a; font-size: 0.8125rem; }
 .requestPreference { margin: -0.25rem 0 1rem; color: #52525b; font-size: 0.8125rem; }
 .grid { display: grid; grid-auto-rows: 1fr; grid-template-columns: minmax(0, 1fr); gap: 0.875rem; list-style: none; margin: 0; padding: 0 0 6rem; }
@@ -36,7 +39,7 @@
 .primaryAction, .secondaryAction { white-space: nowrap; border-radius: 9999px; }
 .disabledAction, .disabledAction:hover { border-color: #d4d4d8; background: #e4e4e7; color: #71717a; cursor: not-allowed; }
 .selfRequestError { margin: 0; color: #b91c1c; font-size: 0.75rem; }
-@media (min-width: 640px) { .content { padding: 1.5rem 1.5rem 3rem; } .filters { grid-template-columns: repeat(3, minmax(150px, 220px)); } .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; } }
+@media (min-width: 640px) { .content { padding: 1.5rem 1.5rem 3rem; } .filters { grid-template-columns: repeat(2, minmax(150px, 220px)) minmax(300px, 440px); } .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; } }
 @media (min-width: 900px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (min-width: 1200px) { .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (min-width: 1024px) { .content { padding: 2rem; } .toolbar { gap: 1.25rem; } }

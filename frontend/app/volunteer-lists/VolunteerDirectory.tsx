@@ -9,6 +9,8 @@ import styles from "./volunteer-lists.module.css";
 import { matchesVolunteerSearch, matchesVolunteerSkillAndFaculty, matchesWeeklyAvailability } from "@/lib/support-requests/volunteer-search";
 import { loadVolunteerDirectory, type VolunteerDirectoryEntry, } from "@/lib/support-requests/volunteer-directory";
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function weekdayFromDate(date: string) {
   if (!date) return "";
   const parsed = new Date(`${date}T12:00:00`);
@@ -30,13 +32,22 @@ export default function VolunteerDirectory() {
   const [supportMode, setSupportMode] = useState("");
   const [selectedVolunteerId, setSelectedVolunteerId] = useState("");
   const [fromAskForSupport, setFromAskForSupport] = useState(false);
+  const [changeRequestId, setChangeRequestId] = useState<string | null>(null);
+  const [excludedVolunteerId, setExcludedVolunteerId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const changeVolunteerMode = changeRequestId !== null;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setFromAskForSupport(params.get("from") === "ask-for-support");
+    const requestId = params.get("requestId");
+    if (params.get("from") === "change-volunteer" && requestId && UUID_PATTERN.test(requestId)) {
+      setChangeRequestId(requestId);
+      setExcludedVolunteerId(params.get("excludeVolunteerId"));
+      setSelectedVolunteerId(params.get("excludeVolunteerId") ?? "");
+    }
     const date = params.get("date") ?? "";
     setSearch(params.get("search") ?? "");
     setSkill(params.get("skill") ?? "");
@@ -44,8 +55,10 @@ export default function VolunteerDirectory() {
     setDay(params.get("day") || weekdayFromDate(date));
     setTime(params.get("time") ?? "");
     setRequestDate(date);
-    setSupportMode(params.get("mode") ?? "");
-    setSelectedVolunteerId(params.get("selectedVolunteer") ?? "");
+    setSupportMode(params.get("supportMode") ?? params.get("mode") ?? "");
+    if (!(params.get("from") === "change-volunteer" && requestId && UUID_PATTERN.test(requestId))) {
+      setSelectedVolunteerId(params.get("selectedVolunteer") ?? "");
+    }
   }, []);
 
   useEffect(() => {
@@ -90,8 +103,21 @@ export default function VolunteerDirectory() {
     [volunteers],
   );
   const days = useMemo(() => [...new Set(volunteers.flatMap((volunteer) => volunteer.availability.map((slot) => slot.day)))], [volunteers]);
+  const timeSlotLabel = useMemo(() => {
+    if (!time) return "";
+    const [hours, minutes] = time.split(":").map(Number);
+    const start = hours * 60 + minutes;
+    const format = (totalMinutes: number) => {
+      const normalized = ((totalMinutes % (24 * 60)) + (24 * 60)) % (24 * 60);
+      const hour = Math.floor(normalized / 60);
+      const twelveHour = hour % 12 || 12;
+      const period = hour < 12 ? "AM" : "PM";
+      return `${twelveHour}:${String(normalized % 60).padStart(2, "0")} ${period}`;
+    };
+    return `${format(start)} - ${format(start + 60)}`;
+  }, [time]);
 
-  const otherVolunteers = withoutOwnVolunteer(volunteers, currentUserId);
+  const otherVolunteers = withoutOwnVolunteer(volunteers.filter((volunteer) => volunteer.user_id !== excludedVolunteerId), currentUserId);
   const filtered = otherVolunteers.filter((volunteer) => {
     const matchesSearch = matchesVolunteerSearch(volunteer, search);
 
@@ -110,6 +136,14 @@ export default function VolunteerDirectory() {
     if (requestDate) params.set("date", requestDate);
     if (time) params.set("time", time);
     if (supportMode) params.set("mode", supportMode);
+    if (changeRequestId) {
+      params.set("volunteerId", volunteer.user_id);
+      params.set("volunteerName", volunteer.name);
+      if (volunteer.photo_url) params.set("volunteerPhoto", volunteer.photo_url);
+      if (category) params.set("category", category);
+      params.set("from", "change-volunteer");
+      return `/support-requests/${changeRequestId}?${new URLSearchParams({ ...Object.fromEntries(params), mode: "change-volunteer" }).toString()}`;
+    }
     params.set("from", "volunteer-lists");
     return `/sessions/ask-for-support?${params.toString()}`;
   }
@@ -124,43 +158,57 @@ export default function VolunteerDirectory() {
     if (faculty) params.set("faculty", faculty);
     if (day) params.set("day", day);
     params.set("selectedVolunteer", volunteer.user_id);
+    if (changeRequestId) {
+      params.set("requestId", changeRequestId);
+      params.set("from", "change-volunteer");
+      if (excludedVolunteerId) params.set("excludeVolunteerId", excludedVolunteerId);
+    }
     const query = params.toString();
     return `/volunteer-lists/${volunteer.user_id}${query ? `?${query}` : ""}`;
   }
 
   return (
     <main className={styles.content}>
-      <p className={styles.backRow}><Link href={fromAskForSupport ? "/sessions/ask-for-support" : "/dashboard"} className={styles.backLink}>{fromAskForSupport ? "← Back to Ask For Support" : "← Back to Dashboard"}</Link></p>
+      <p className={styles.backRow}><Link href={changeVolunteerMode ? `/support-requests/${changeRequestId}?mode=change-volunteer` : fromAskForSupport ? "/sessions/ask-for-support" : "/dashboard"} className={styles.backLink}>{changeVolunteerMode ? "← Back to Change Volunteer" : fromAskForSupport ? "← Back to Ask For Support" : "← Back to Dashboard"}</Link></p>
       <div className={styles.toolbar}>
         <label className={styles.searchLabel}>
           <span className={styles.srOnly}>Search volunteers</span>
-          <input className={styles.search} type="search" placeholder="Search volunteers" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <input className={styles.search} type="search" placeholder="Search volunteers" value={search} disabled={changeVolunteerMode} onChange={(event) => setSearch(event.target.value)} />
         </label>
         <div className={styles.filters}>
           <label className={styles.filterLabel}>Skills
-            <select value={skill} onChange={(event) => setSkill(event.target.value)}>
+            <select value={skill} disabled={changeVolunteerMode} onChange={(event) => setSkill(event.target.value)}>
               <option value="">All skills</option>
               {skill && !skills.includes(skill) && <option value={skill}>{skill}</option>}
               {skills.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
           </label>
           <label className={styles.filterLabel}>Faculty
-            <select value={faculty} onChange={(event) => setFaculty(event.target.value)}>
+            <select value={faculty} disabled={changeVolunteerMode} onChange={(event) => setFaculty(event.target.value)}>
               <option value="">All faculties</option>
               {faculties.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
           </label>
-          <label className={styles.filterLabel}>Weekly availability
-            <select value={day} onChange={(event) => setDay(event.target.value)}>
-              <option value="">Any day</option>
-              {day && !days.includes(day) && <option value={day}>{day}</option>}
-              {days.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-          </label>
+          <div className={styles.availabilityFilters}>
+            <label className={styles.filterLabel}>Weekly availability
+              <select value={day} disabled={changeVolunteerMode} onChange={(event) => setDay(event.target.value)}>
+                <option value="">Any day</option>
+                {day && !days.includes(day) && <option value={day}>{day}</option>}
+                {days.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+            </label>
+            <label className={styles.filterLabel}>Time
+              <input
+                type="time"
+                value={time}
+                disabled={changeVolunteerMode}
+                onChange={(event) => setTime(event.target.value)}
+                aria-label="Filter volunteers by availability time"
+              />
+              {timeSlotLabel && <span className={styles.timeSlot} aria-live="polite">Time Slot: {timeSlotLabel}</span>}
+            </label>
+          </div>
         </div>
-        {(requestDate || supportMode) && <p className={styles.requestPreference}>
-          Matching request{requestDate ? ` for ${requestDate}` : ""}{time ? ` at ${time}` : ""}{supportMode ? ` · ${supportMode}` : ""}
-        </p>}
       </div>
 
       <div className={styles.resultLine} aria-live="polite">
@@ -209,7 +257,7 @@ export default function VolunteerDirectory() {
                 return <aside className={styles.cardActions} aria-label={`${volunteer.name} actions`}>
                   <div className={styles.selectionActions}>
                     <div className={styles.requestActionGroup}>
-                      <button type="button" className={`${styles.primaryAction} ${action.disabled ? styles.disabledAction : ""}`} disabled={action.disabled} onClick={() => router.push(requestUrl(volunteer))}>Make a request</button>
+                      <button type="button" className={`${styles.primaryAction} ${action.disabled ? styles.disabledAction : ""}`} disabled={action.disabled} onClick={() => router.push(requestUrl(volunteer))}>{changeRequestId ? "Choose Volunteer" : "Make a Request"}</button>
                       {action.message && <p className={styles.selfRequestError} role="alert">{action.message}</p>}
                     </div>
                     <button type="button" className={styles.secondaryAction} onClick={() => router.push(profileUrl(volunteer))}>View volunteer profile</button>
