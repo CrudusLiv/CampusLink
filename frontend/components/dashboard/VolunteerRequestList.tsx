@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { scheduleSession } from "@/lib/sessions/client";
 import { overlaps } from "@/lib/sessions/slots";
-import { SUPPORT_MODES, type AvailabilityRow, type DayOfWeek } from "@/lib/sessions/types";
+import { bookableMode, type AvailabilityRow, type DayOfWeek } from "@/lib/sessions/types";
 import RequestStatusBadge from "@/components/support-requests/RequestStatusBadge";
 import { canRespondToRequest } from "@/lib/support-requests/request-response";
 import {
@@ -165,6 +165,12 @@ export default function VolunteerRequestList({ view }: { view: VolunteerRequestV
       (status === "Accepted" && !request.isFree) ||
       !canRespondToRequest(request.status, status)
     ) return;
+    // A session can only be booked in Online or In-person. Check this first, so a request is never left Accepted without a session.
+    const mode = bookableMode(request.support_mode);
+    if (status === "Accepted" && !mode) {
+      setActionError("This request has no support mode a session can be booked in (Online or In-person), so it was not accepted.");
+      return;
+    }
     setRespondingId(requestId);
     setActionError("");
     const { data, error } = await supabase
@@ -183,7 +189,6 @@ export default function VolunteerRequestList({ view }: { view: VolunteerRequestV
 
     // If booking fails, the accepted request remains available under My Sessions for manual scheduling.
     if (status === "Accepted") {
-      const mode = SUPPORT_MODES.find((candidate) => candidate.toLowerCase() === request.support_mode?.toLowerCase()); // the request form saves "In-person"
       const booked = mode
         ? await scheduleSession({ requestId, scheduledDatetime: requestedIso(request.requested_date, request.requested_time), supportMode: mode })
         : null;
