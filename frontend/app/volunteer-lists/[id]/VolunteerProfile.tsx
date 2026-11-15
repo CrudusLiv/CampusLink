@@ -22,6 +22,7 @@ export default function VolunteerProfile({ userId }: { userId: string }) {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [skills, setSkills] = useState<string[]>([]);
+  const [supportMode, setSupportMode] = useState<"Online" | "In-person" | "Both">("Both");
   const [availability, setAvailability] = useState<Slot[]>([]);
   const [ratings, setRatings] = useState<RatingSummary | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -42,7 +43,7 @@ export default function VolunteerProfile({ userId }: { userId: string }) {
         await Promise.all([
           supabase.auth.getUser(),
           supabase.from("users").select("user_id, name, photo_url, faculty, bio").eq("user_id", userId).maybeSingle(),
-          supabase.from("volunteer_profile").select("skills, is_volunteer").eq("user_id", userId).maybeSingle(),
+          supabase.from("volunteer_profile").select("skills, is_volunteer, support_mode").eq("user_id", userId).maybeSingle(),
           supabase.from("availability").select("day_of_week, start_time, end_time").eq("user_id", userId),
           supabase.rpc("volunteer_rating_summary", { p_volunteer_id: userId }),
         ]);
@@ -54,6 +55,7 @@ export default function VolunteerProfile({ userId }: { userId: string }) {
       } else {
         setProfile(person as Profile);
         setSkills(volunteer.skills ?? []);
+        setSupportMode(volunteer.support_mode ?? "Both");
         setAvailability(slots ?? []);
         setRatings((summary ?? null) as RatingSummary | null);
       }
@@ -115,6 +117,11 @@ export default function VolunteerProfile({ userId }: { userId: string }) {
           <section className={styles.section}>
             <h2>Skills</h2>
             {skills.length ? <div className={styles.skills}>{skills.map((skill) => <span key={skill} className={styles.skill}>{skill}</span>)}</div> : <p className={styles.muted}>No skills listed.</p>}
+          </section>
+
+          <section className={styles.section}>
+            <h2>Support mode</h2>
+            <p>{supportMode === "Both" ? "Online, In-person" : supportMode}</p>
           </section>
 
           <section className={styles.section}>

@@ -42,6 +42,13 @@ type WeeklyAvailability = {
   end: string;
 };
 
+export function matchesVolunteerSupportMode(
+  volunteerMode: "Online" | "In-person" | "Both",
+  selectedMode: "" | "Online" | "In-person",
+) {
+  return !selectedMode || volunteerMode === "Both" || volunteerMode === selectedMode;
+}
+
 export function matchesWeeklyAvailability(
   availability: WeeklyAvailability[],
   day: string,
