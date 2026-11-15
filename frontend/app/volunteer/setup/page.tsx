@@ -4,6 +4,9 @@
 // A volunteer picks subject tags and the hours they're free each week.
 // Saved with one database function so skills and slots are stored together.
 // Volunteers can also add their own subject if it isn't in the list.
+// Subjects are grouped into the four volunteer categories from the use case
+// (Academic, Technology, New Student, General Student), and the volunteer
+// chooses a preferred support mode (Virtual / Face-to-face / Both).
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -23,6 +26,7 @@ import {
   validateVolunteerSetup,
   cellsToSlots,
 } from "@/lib/validation/volunteerSetup";
+import { VOLUNTEER_CATEGORIES, SUPPORT_MODES, SupportMode, categoryOf } from "@/lib/volunteerCategories";
 
 export default function VolunteerSetupPage() {
   const { profile } = useCurrentUser();
@@ -36,6 +40,7 @@ export default function VolunteerSetupPage() {
   const [newSubject, setNewSubject] = useState("");
   const [subjectError, setSubjectError] = useState("");
   const [savedSignature, setSavedSignature] = useState("");
+  const [supportMode, setSupportMode] = useState<SupportMode>("Both");
 
   // Load the volunteer's saved skills and schedule
   useEffect(() => {
@@ -44,12 +49,14 @@ export default function VolunteerSetupPage() {
     async function load() {
       const { data: vp } = await supabase
         .from("volunteer_profile")
-        .select("skills, is_volunteer")
+        .select("skills, is_volunteer, support_mode")
         .eq("user_id", profile!.user_id)
         .maybeSingle();
 
       setIsVolunteer(Boolean(vp?.is_volunteer));
       setSkills(vp?.skills ?? []);
+      const savedMode: SupportMode = vp?.support_mode ?? "Both";
+      setSupportMode(savedMode);
 
       const { data: rows } = await supabase
         .from("availability")
@@ -63,7 +70,7 @@ export default function VolunteerSetupPage() {
         for (let h = start; h < end; h++) saved.add(cellKey(row.day_of_week, h));
       });
       setCells(saved);
-      setSavedSignature(setupSignature(vp?.skills ?? [], saved));
+      setSavedSignature(setupSignature(vp?.skills ?? [], saved, savedMode));
     }
 
     load();
@@ -109,8 +116,8 @@ export default function VolunteerSetupPage() {
     }
 
     // Nothing changed since the last save: no need to call the database
-    if (setupSignature(skills, cells) === savedSignature) {
-      setMessage("No changes to save. Your skills and availability are already up to date.");
+    if (setupSignature(skills, cells, supportMode) === savedSignature) {
+      setServerError("No changes to save. Your skills and availability are already up to date.");
       return;
     }
 
@@ -119,13 +126,18 @@ export default function VolunteerSetupPage() {
       p_skills: skills,
       p_slots: cellsToSlots(cells),
     });
+
+    // Save the preferred support mode (the row exists now, and RLS only allows the volunteer's own row)
+    const { error: modeError } = error
+      ? { error: null }
+      : await supabase.from("volunteer_profile").update({ support_mode: supportMode }).eq("user_id", profile!.user_id);
     setSaving(false);
 
-    if (error) {
+    if (error || modeError) {
       setServerError("We couldn't save your availability. Please try again.");
       return;
     }
-    setSavedSignature(setupSignature(skills, cells));
+    setSavedSignature(setupSignature(skills, cells, supportMode));
     setMessage("Saved. Students can now find you in the volunteer list.");
   }
 
@@ -157,22 +169,37 @@ export default function VolunteerSetupPage() {
 
               <section className={styles.section}>
                 <h2 className={styles.sectionTitle}>Subjects you can help with</h2>
-                <div className={styles.tags}>
-                  {allSubjects.map((subject) => {
-                    const selected = skills.includes(subject);
-                    return (
-                      <button
-                        key={subject}
-                        type="button"
-                        onClick={() => toggleSkill(subject)}
-                        aria-pressed={selected}
-                        className={selected ? `${styles.tag} ${styles.tagSelected}` : styles.tag}
-                      >
-                        {subject}
-                      </button>
-                    );
-                  })}
-                </div>
+                <p className={styles.hint}>Choose one or more subjects in any of the four volunteer categories.</p>
+                {VOLUNTEER_CATEGORIES.map((category) => {
+                  // Subjects in this category, plus any subjects the volunteer added (shown under General Student Support)
+                  const subjects = allSubjects.filter((subject) => categoryOf(subject) === category.name);
+                  return (
+                    <div key={category.name} className={styles.categoryGroup}>
+                      <h3 className={styles.categoryTitle}>{category.name}</h3>
+                      <p className={styles.categoryHint}>{category.examples}</p>
+                      {subjects.length > 0 ? (
+                        <div className={styles.tags}>
+                          {subjects.map((subject) => {
+                            const selected = skills.includes(subject);
+                            return (
+                              <button
+                                key={subject}
+                                type="button"
+                                onClick={() => toggleSkill(subject)}
+                                aria-pressed={selected}
+                                className={selected ? `${styles.tag} ${styles.tagSelected}` : styles.tag}
+                              >
+                                {subject}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className={styles.categoryHint}>Add your own subject below to help in this category.</p>
+                      )}
+                    </div>
+                  );
+                })}
 
                 {/* Add a subject that isn't in the list */}
                 <div className={styles.addRow}>
@@ -205,6 +232,28 @@ export default function VolunteerSetupPage() {
                   <p className={styles.hint}>Click a subject again to remove it.</p>
                 )}
                 {errors.skills && <p className={styles.error}>{errors.skills}</p>}
+              </section>
+
+              <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>Preferred support mode</h2>
+                <div className={styles.tags} role="radiogroup" aria-label="Preferred support mode">
+                  {SUPPORT_MODES.map((mode) => (
+                    <button
+                      key={mode.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={supportMode === mode.value}
+                      onClick={() => {
+                        setMessage("");
+                        setSupportMode(mode.value);
+                      }}
+                      className={supportMode === mode.value ? `${styles.tag} ${styles.tagSelected}` : styles.tag}
+                    >
+                      {mode.label}
+                    </button>
+                  ))}
+                </div>
+                <p className={styles.hint}>Virtual sessions use Google Meet or Zoom; face-to-face sessions are on campus.</p>
               </section>
 
               <section className={styles.section}>

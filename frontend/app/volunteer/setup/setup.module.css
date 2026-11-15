@@ -241,3 +241,17 @@
   .timeLabel { padding-right: 0.25rem !important; }
   .cell { height: 2.25rem; }
 }
+
+
+/* --- Subjects grouped by the four volunteer categories (Use Case 1) --- */
+.categoryGroup { margin-top: var(--space-4, 1rem); padding-top: var(--space-3, 0.75rem); border-top: 1px solid var(--line, #e4e4e7); }
+.categoryGroup:first-of-type { border-top: 0; padding-top: 0; }
+.categoryTitle { margin: 0 0 0.25rem; font-size: 0.9375rem; font-weight: 700; color: var(--ink, #111827); }
+.categoryHint { margin: 0 0 var(--space-2, 0.5rem); font-size: 0.8125rem; color: var(--text-3, #71717a); 
+}
+
+.tags + .hint { margin-top: 0.75rem; 
+}
+
+.addRow { margin-top: 1rem; }
+.addRow ~ .hint, .addRow ~ .error { margin-top: 0.5rem; }

@@ -35,8 +35,8 @@ export function validateNewSubject(input: string, skills: string[]) {
 }
 
 // A short "fingerprint" of the choices, used to tell if anything changed since the last save
-export function setupSignature(skills: string[], cells: Set<string>) {
-  return JSON.stringify([[...skills].sort(), [...cells].sort()]);
+export function setupSignature(skills: string[], cells: Set<string>, supportMode = "") {
+  return JSON.stringify([[...skills].sort(), [...cells].sort(), supportMode]);
 }
 
 export function validateVolunteerSetup(skills: string[], cells: Set<string>) {
