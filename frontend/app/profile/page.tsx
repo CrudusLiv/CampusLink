@@ -10,37 +10,8 @@ import { refreshCurrentUser, useCurrentUser } from "@/lib/useCurrentUser";
 import AppShell from "@/components/layout/AppShell";
 import styles from "./profile.module.css";
 import BecomeVolunteerCard from "@/components/volunteer/BecomeVolunteerCard";
-
-type ProfileForm = {
-  name: string;
-  phone: string;
-  faculty: string;
-  bio: string;
-};
-
-type ProfileErrors = Partial<Record<keyof ProfileForm, string>>;
-
-const BIO_MAX = 300;
-
-// Kept separate so it can be unit tested later
-export function validateProfile(form: ProfileForm): ProfileErrors {
-  const errors: ProfileErrors = {};
-
-  if (form.name.trim().length < 2 || form.name.trim().length > 100) {
-    errors.name = "Name must be between 2 and 100 characters.";
-  }
-  if (form.phone.trim() !== "" && !/^\+?[\d\s-]{9,15}$/.test(form.phone.trim())) {
-    errors.phone = "Enter a valid phone number, e.g. 012-345 6789.";
-  }
-  if (form.faculty.trim().length > 100) {
-    errors.faculty = "Faculty must be 100 characters or less.";
-  }
-  if (form.bio.length > BIO_MAX) {
-    errors.bio = `Bio must be ${BIO_MAX} characters or less.`;
-  }
-
-  return errors;
-}
+// Form rules live in lib/validation so they can be unit tested (tests/epic1/profile.test.ts)
+import { validateProfile, BIO_MAX, type ProfileForm, type ProfileErrors } from "@/lib/validation/profile";
 
 export default function ProfilePage() {
   const { profile } = useCurrentUser();
