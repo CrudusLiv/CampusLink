@@ -118,9 +118,7 @@
 .validationTooltip::after { content: ""; position: absolute; top: -6px; left: 1rem; width: 10px; height: 10px; border-top: 1px solid #8b8b8b; border-left: 1px solid #8b8b8b; background: #fff; transform: rotate(45deg); }
 .validationTooltip::before { content: "!"; display: grid; width: 1.25rem; height: 1.25rem; flex: 0 0 1.25rem; place-items: center; border-radius: 2px; background: #ed5b00; color: #fff; font-size: 1rem; font-weight: 700; }
 .dateInputWrap { position: relative; }
-.dateInputWithLabel { color: transparent; }
-.dateInputWithLabel::-webkit-datetime-edit { color: transparent; }
-.dateDisplay { position: absolute; top: 50%; left: 1rem; z-index: 1; color: #111827; font-size: 0.875rem; transform: translateY(-50%); pointer-events: none; }
+.dateDisplay { position: absolute; top: 50%; right: 3rem; z-index: 1; color: #71717a; font-size: 0.875rem; transform: translateY(-50%); pointer-events: none; }
 .sessionDuration { margin: 0.25rem 0 0; color: #71717a; font-size: 0.875rem; line-height: 1.4; }
 
 /* Volunteer Side Panel */

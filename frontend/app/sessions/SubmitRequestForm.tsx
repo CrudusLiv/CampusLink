@@ -101,8 +101,7 @@ function formatSelectedDate(value: string) {
   if (!value) return "";
   const parsed = new Date(`${value}T12:00:00Z`);
   if (Number.isNaN(parsed.getTime())) return "";
-  const weekday = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "long" }).format(parsed);
-  return `${parsed.getUTCMonth() + 1}/${parsed.getUTCDate()}/${parsed.getUTCFullYear()}, ${weekday}`;
+  return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "long" }).format(parsed);
 }
 
 function formatSessionTimeRange(value: string) {
@@ -422,7 +421,7 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, in
             <input
               type="date"
               aria-label="Preferred date"
-              className={`${styles.input} ${date ? styles.dateInputWithLabel : ""}`}
+              className={styles.input}
               value={date}
               min={localDateValue(new Date())}
               onChange={(e) => { setDate(e.target.value); clearValidationError(); }}
