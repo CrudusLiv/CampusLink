@@ -59,6 +59,7 @@ test('TCUC3_8 accepting a request books the session at the requested time; a bus
 });
 
 test('TCUC3_9 upcoming sessions appear on the student and volunteer dashboards, and volunteers can reach My Support Sessions', async () => {
+  await page.evaluate((k) => sessionStorage.setItem(k, 'student'), `campuslink:dashboard-view:${userId}`); // TCUC3_8 leaves the Volunteer view selected
   await page.goto('/dashboard');
   // The redesigned Help Seeker dashboard shows the nearest booked session under "Your next session".
   await expect(page.locator('#upcoming-heading')).toBeVisible({ timeout: 60_000 });
