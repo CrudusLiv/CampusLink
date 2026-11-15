@@ -11,56 +11,12 @@ import { supabase } from "@/lib/supabaseClient";
 import AuthLayout from "@/components/auth/AuthLayout";
 import { passwordRules } from "@/lib/passwordRules";
 import styles from "./register.module.css";
-
-// The shape of the form data
-type FormData = {
-  fullName: string;
-  studentId: string;
-  email: string;
-  phone: string;
-  password: string;
-  confirmPassword: string;
-};
-
-// One error message per field (empty = no error)
-type FormErrors = Partial<Record<keyof FormData, string>>;
-
-const UNIVERSITY_DOMAIN = "@helplive.edu.my";
-
-// Checks every field and returns the error messages.
-// Kept as a separate function so it can be unit tested later with Vitest.
-export function validateRegistration(data: FormData): FormErrors {
-  const errors: FormErrors = {};
-
-  if (data.fullName.trim().length < 2) {
-    errors.fullName = "Enter your full name.";
-  }
-
-  // HELP student IDs look like B2400089 (letter B + 7 digits)
-  if (!/^B\d{7}$/i.test(data.studentId.trim())) {
-    errors.studentId = "Student ID should look like BXXXXXXX.";
-  }
-
-  if (!data.email.trim().toLowerCase().endsWith(UNIVERSITY_DOMAIN)) {
-    errors.email = `Use your university email ending in ${UNIVERSITY_DOMAIN}.`;
-  }
-
-  // Phone is optional, but if filled in it must be digits (spaces, + and - allowed)
-  if (data.phone.trim() !== "" && !/^\+?[\d\s-]{9,15}$/.test(data.phone.trim())) {
-    errors.phone = "Enter a valid phone number, e.g. 012-345 6789.";
-  }
-
-  // Same password rule as User Story 8: at least 8 characters, 1 uppercase, 1 number
-  if (data.password.length < 8 || !/[A-Z]/.test(data.password) || !/\d/.test(data.password)) {
-    errors.password = "Password needs at least 8 characters, 1 uppercase letter and 1 number.";
-  }
-
-  if (data.confirmPassword !== data.password) {
-    errors.confirmPassword = "Passwords do not match.";
-  }
-
-  return errors;
-}
+// Form rules live in lib/validation so they can be unit tested (tests/epic1/registration.test.ts)
+import {
+  validateRegistration,
+  type RegistrationData as FormData,
+  type RegistrationErrors as FormErrors,
+} from "@/lib/validation/registration";
 
 export default function RegisterPage() {
   const router = useRouter();

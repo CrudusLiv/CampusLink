@@ -1,6 +1,7 @@
 // Unit tests – Skills & Availability rules (User Story 2)
 import { describe, expect, it } from "vitest";
 import { DAYS } from "../../lib/categories";
+import { categoryOf } from "../../lib/volunteerCategories";
 import {
   MAX_SUBJECT_LENGTH,
   cellKey,
@@ -88,5 +89,22 @@ describe("setupSignature", () => {
     const before = setupSignature(["Maths"], new Set([cellKey(day1, 9)]));
     const after = setupSignature(["Maths"], new Set([cellKey(day1, 9), cellKey(day1, 10)]));
     expect(after).not.toBe(before);
+  });
+});
+
+describe("support mode and volunteer categories (Use Case 1, line 3b)", () => {
+  it("UT-E1-37 changes the signature when only the support mode changes", () => {
+    const cells = new Set([cellKey(day1, 9)]);
+    expect(setupSignature(["Maths"], cells, "Virtual")).not.toBe(setupSignature(["Maths"], cells, "F2F"));
+  });
+
+  it("UT-E1-38 puts list subjects in the right category", () => {
+    expect(categoryOf("Programming")).toBe("Academic Support");
+    expect(categoryOf("IT Help")).toBe("Technology Support");
+    expect(categoryOf("Campus Orientation")).toBe("New Student Support");
+  });
+
+  it("UT-E1-39 puts a subject the volunteer added under General Student Support", () => {
+    expect(categoryOf("Accounting")).toBe("General Student Support");
   });
 });
