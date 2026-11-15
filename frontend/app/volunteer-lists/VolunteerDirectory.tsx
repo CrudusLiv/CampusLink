@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { getVolunteerRequestAction, volunteerDirectoryCards, withoutOwnVolunteer } from "@/lib/support-requests/volunteers";
 import styles from "./volunteer-lists.module.css";
-import { matchesVolunteerSearch, matchesVolunteerSkillAndFaculty, matchesWeeklyAvailability } from "@/lib/support-requests/volunteer-search";
+import { matchesVolunteerSearch, matchesVolunteerSkillAndFaculty, matchesWeeklyAvailability, matchesVolunteerSupportMode } from "@/lib/support-requests/volunteer-search";
 import { loadVolunteerDirectory, type VolunteerDirectoryEntry, } from "@/lib/support-requests/volunteer-directory";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -121,7 +121,7 @@ export default function VolunteerDirectory() {
   const filtered = otherVolunteers.filter((volunteer) => {
     const matchesSearch = matchesVolunteerSearch(volunteer, search);
 
-    return matchesSearch && matchesVolunteerSkillAndFaculty(volunteer, skill, faculty) && matchesWeeklyAvailability(volunteer.availability, day, time);
+    return matchesSearch && matchesVolunteerSkillAndFaculty(volunteer, skill, faculty) && matchesWeeklyAvailability(volunteer.availability, day, time) && matchesVolunteerSupportMode(volunteer.support_mode, supportMode as "" | "Online" | "In-person");
   });
 
   const visibleVolunteerCards = volunteerDirectoryCards(filtered, currentUserId);
@@ -208,6 +208,13 @@ export default function VolunteerDirectory() {
               {timeSlotLabel && <span className={styles.timeSlot} aria-live="polite">Time Slot: {timeSlotLabel}</span>}
             </label>
           </div>
+          <label className={styles.filterLabel}>Support Mode
+            <select value={supportMode} disabled={changeVolunteerMode} onChange={(event) => setSupportMode(event.target.value)}>
+              <option value="">All</option>
+              <option value="Online">Online</option>
+              <option value="In-person">In-person</option>
+            </select>
+          </label>
         </div>
       </div>
 
@@ -247,6 +254,7 @@ export default function VolunteerDirectory() {
               )}
               <h2 className={styles.name}>{volunteer.name}</h2>
               {volunteer.faculty && <p className={styles.faculty}>{volunteer.faculty}</p>}
+              <p className={styles.availability}>Support mode: {volunteer.support_mode === "Both" ? "Online, In-person" : volunteer.support_mode}</p>
               <div className={styles.skills} aria-label="Skills">
                 {volunteer.skills.length ? volunteer.skills.map((item) => <span className={styles.skill} key={item}>{item}</span>) : <span className={styles.muted}>Skills not set</span>}
               </div>

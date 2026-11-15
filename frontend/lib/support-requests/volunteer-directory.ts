@@ -6,12 +6,14 @@ export type VolunteerDirectoryEntry = {
   photo_url: string | null;
   faculty: string | null;
   skills: string[];
+  support_mode: "Online" | "In-person" | "Both";
   availability: { day: string; start: string; end: string }[];
 };
 
 type VolunteerRow = {
   user_id: string;
   skills: string[] | null;
+  support_mode: "Online" | "In-person" | "Both" | null;
 };
 
 type ProfileRow = {
@@ -42,7 +44,7 @@ export async function loadVolunteerDirectory(
       db.auth.getUser(),
       db
         .from("volunteer_profile")
-        .select("user_id, skills")
+        .select("user_id, skills, support_mode")
         .eq("is_volunteer", true),
     ]);
 
@@ -110,6 +112,7 @@ export async function loadVolunteerDirectory(
       photo_url: profile.photo_url,
       faculty: profile.faculty,
       skills: row.skills ?? [],
+      support_mode: row.support_mode ?? "Both",
       availability: availabilityById.get(row.user_id) ?? [],
     }];
   });

@@ -33,8 +33,8 @@ describe("volunteer directory data loading", () => {
     queries = {
       volunteer_profile: makeQuery({
         data: [
-          { user_id: VOLUNTEER_ONE, skills: ["Programming"] },
-          { user_id: VOLUNTEER_TWO, skills: null },
+          { user_id: VOLUNTEER_ONE, skills: ["Programming"], support_mode: "Online" },
+          { user_id: VOLUNTEER_TWO, skills: null, support_mode: "In-person" },
         ],
         error: null,
       }),
@@ -99,6 +99,7 @@ describe("volunteer directory data loading", () => {
         photo_url: null,
         faculty: "Computing",
         skills: ["Programming"],
+        support_mode: "Online",
         availability: [
           { day: "Mon", start: "10:00:00", end: "12:00:00" },
           { day: "Wed", start: "14:00:00", end: "15:00:00" },
@@ -110,6 +111,7 @@ describe("volunteer directory data loading", () => {
         photo_url: "https://example.com/ben.png",
         faculty: "Business",
         skills: [],
+        support_mode: "In-person",
         availability: [],
       },
     ]);

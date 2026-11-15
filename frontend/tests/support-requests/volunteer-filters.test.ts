@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchesVolunteerSkillAndFaculty } from "@/lib/support-requests/volunteer-search";
+import { matchesVolunteerSkillAndFaculty, matchesVolunteerSupportMode } from "@/lib/support-requests/volunteer-search";
 
 describe("TCUC2_12 skill and faculty filters", () => {
   const volunteers = [
@@ -23,5 +23,16 @@ describe("TCUC2_12 skill and faculty filters", () => {
     );
 
     expect(result).toHaveLength(4);
+  });
+});
+
+describe("volunteer support mode filter", () => {
+  it("matches the volunteer-provided mode, with Both satisfying either option", () => {
+    expect(matchesVolunteerSupportMode("Online", "Online")).toBe(true);
+    expect(matchesVolunteerSupportMode("Online", "In-person")).toBe(false);
+    expect(matchesVolunteerSupportMode("In-person", "In-person")).toBe(true);
+    expect(matchesVolunteerSupportMode("Both", "Online")).toBe(true);
+    expect(matchesVolunteerSupportMode("Both", "In-person")).toBe(true);
+    expect(matchesVolunteerSupportMode("Online", "")).toBe(true);
   });
 });
