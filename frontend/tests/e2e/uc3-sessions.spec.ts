@@ -60,10 +60,10 @@ test('TCUC3_8 accepting a request books the session at the requested time; a bus
 
 test('TCUC3_9 upcoming sessions appear on the student and volunteer dashboards, and volunteers can reach My Support Sessions', async () => {
   await page.goto('/dashboard');
-  await expect(page.locator('#dash-upcoming-title')).toBeVisible({ timeout: 60_000 });
-  await expect(page.locator('section[aria-labelledby="dash-upcoming-title"] a', { hasText: 'Manage all sessions' })).toHaveAttribute('href', '/sessions');
+  // The redesigned Help Seeker dashboard shows the nearest booked session under "Your next session".
+  await expect(page.locator('#upcoming-heading')).toBeVisible({ timeout: 60_000 });
   await settled();
-  await page.locator('#dash-upcoming-title').scrollIntoViewIfNeeded();
+  await page.locator('#upcoming-heading').scrollIntoViewIfNeeded();
   await evidence(page, 'TCUC3_9a');
 
   await page.goto('/profile', { waitUntil: 'networkidle' });
@@ -72,9 +72,9 @@ test('TCUC3_9 upcoming sessions appear on the student and volunteer dashboards, 
   test.skip((await toVolunteer.count()) === 0, 'This account is not a volunteer.');
   await toVolunteer.click();
   await page.waitForURL('**/dashboard');
-  await expect(page.locator('#dash-upcoming-title')).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator('#next-sessions-heading')).toBeVisible({ timeout: 60_000 }); // the Volunteer dashboard's "Next sessions"
   await settled();
-  await page.locator('#dash-upcoming-title').scrollIntoViewIfNeeded();
+  await page.locator('#next-sessions-heading').scrollIntoViewIfNeeded();
   await evidence(page, 'TCUC3_9b');
 
   await expect(page.locator('aside nav a', { hasText: 'My Sessions' })).toHaveAttribute('href', '/sessions');
