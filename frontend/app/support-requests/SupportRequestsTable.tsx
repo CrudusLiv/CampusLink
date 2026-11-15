@@ -36,7 +36,7 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(new Date(value));
 }
 
-export default function SupportRequestsTable({ showSubmittedToast = false }: { showSubmittedToast?: boolean }) {
+export default function SupportRequestsTable({ showSubmittedToast = false, showVolunteerChangedToast = false }: { showSubmittedToast?: boolean; showVolunteerChangedToast?: boolean }) {
   const router = useRouter();
   const { profile } = useCurrentUser();
   const [requests, setRequests] = useState<RequestRow[]>([]);
@@ -50,10 +50,10 @@ export default function SupportRequestsTable({ showSubmittedToast = false }: { s
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!showSubmittedToast) return;
-    const timer = setTimeout(() => router.replace("/support-requests", { scroll: false }), 2000);
+    if (!showSubmittedToast && !showVolunteerChangedToast) return;
+    const timer = setTimeout(() => router.replace("/support-requests", { scroll: false }), showVolunteerChangedToast ? 3000 : 2000);
     return () => clearTimeout(timer);
-  }, [router, showSubmittedToast]);
+  }, [router, showSubmittedToast, showVolunteerChangedToast]);
 
   useEffect(() => {
     if (!profile) return;
@@ -238,12 +238,14 @@ export default function SupportRequestsTable({ showSubmittedToast = false }: { s
 
   if (!profile) return <main className={styles.content}>
     {showSubmittedToast && <SupportRequestSuccessToast title="Your support request was submitted successfully." />}
+    {showVolunteerChangedToast && <SupportRequestSuccessToast title="Volunteer Changed Successfully!" description="Your support request has been successfully assigned to the new volunteer." />}
     <p className={styles.message}>Loading requests…</p>
   </main>;
 
   return (
     <main className={styles.content}>
       {showSubmittedToast && <SupportRequestSuccessToast title="Your support request was submitted successfully." />}
+      {showVolunteerChangedToast && <SupportRequestSuccessToast title="Volunteer Changed Successfully!" description="Your support request has been successfully assigned to the new volunteer." />}
       <div className={styles.filters} role="group" aria-label="Filter requests by status">
         {FILTERS.map((item) => <button
           key={item}

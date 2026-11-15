@@ -7,7 +7,6 @@ import { ASK_SUPPORT_DRAFT_KEY } from "@/lib/askSupportDraft";
 import { klDateKey, TZ } from "@/lib/sessions/time";
 import { supabase } from "@/lib/supabaseClient";
 import { isOwnVolunteer, isSelfVolunteerConstraintError } from "@/lib/support-requests/volunteers";
-import SupportRequestSuccessToast from "@/components/support-requests/SupportRequestSuccessToast";
 import styles from "./SubmitRequestForm.module.css";
 
 export type ExistingSupportRequest = {
@@ -176,7 +175,6 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, se
   const [chosenVolunteer, setChosenVolunteer] = useState(initialValues.chosenVolunteer);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
-  const [changedSuccessfully, setChangedSuccessfully] = useState(false);
   const [validationError, setValidationError] = useState<{ field: string; message: string } | null>(null);
   const isSubmitting = useRef(false);
 
@@ -400,8 +398,7 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, se
       return;
     }
     if (mode === "change-volunteer") {
-      setChangedSuccessfully(true);
-      window.setTimeout(() => router.push(`/support-requests/${request!.id}`), 2000);
+      router.push("/support-requests?volunteerChanged=1");
       return;
     }
     router.push("/support-requests");
@@ -527,7 +524,6 @@ function SubmitRequestFormContent({ mode = "create", request, canEdit = true, se
             {mode === "change-volunteer" && chosenVolunteer?.id === request?.volunteer_id && <p className={styles.formError}>Choose someone different from the currently assigned volunteer.</p>}
           </div>}
 
-          {changedSuccessfully && <SupportRequestSuccessToast title="Volunteer Changed Successfully!" description="Your support request has been successfully assigned to the new volunteer." />}
           {submitError && <p className={styles.formError} role="alert">{submitError}</p>}
           {mode === "view" && canEdit ? (
             <button type="button" className={styles.submitBtn} onClick={() => router.push(`/support-requests/${request?.id}?mode=edit`)}>Edit Request</button>
