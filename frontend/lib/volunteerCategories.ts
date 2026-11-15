@@ -35,9 +35,11 @@ export function categoryOf(subject: string): VolunteerCategory {
   return found ? found.name : "General Student Support";
 }
 
+// Values match the ones used by support requests and sessions (Epic 2 / Epic 3).
+// "Online" = Virtual and "In-person" = F2F in the use case.
 export const SUPPORT_MODES = [
-  { value: "Virtual", label: "Virtual" },
-  { value: "F2F", label: "Face-to-face" },
+  { value: "Online", label: "Online" },
+  { value: "In-person", label: "In-person" },
   { value: "Both", label: "Both" },
 ] as const;
 

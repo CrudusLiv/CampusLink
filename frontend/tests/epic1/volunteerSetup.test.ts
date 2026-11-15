@@ -95,7 +95,7 @@ describe("setupSignature", () => {
 describe("support mode and volunteer categories (Use Case 1, line 3b)", () => {
   it("UT-E1-37 changes the signature when only the support mode changes", () => {
     const cells = new Set([cellKey(day1, 9)]);
-    expect(setupSignature(["Maths"], cells, "Virtual")).not.toBe(setupSignature(["Maths"], cells, "F2F"));
+    expect(setupSignature(["Maths"], cells, "Online")).not.toBe(setupSignature(["Maths"], cells, "In-person"));
   });
 
   it("UT-E1-38 puts list subjects in the right category", () => {

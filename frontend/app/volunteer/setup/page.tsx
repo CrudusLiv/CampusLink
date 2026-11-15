@@ -6,7 +6,7 @@
 // Volunteers can also add their own subject if it isn't in the list.
 // Subjects are grouped into the four volunteer categories from the use case
 // (Academic, Technology, New Student, General Student), and the volunteer
-// chooses a preferred support mode (Virtual / Face-to-face / Both).
+// chooses a preferred support mode (Online / In-person / Both).
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -253,7 +253,7 @@ export default function VolunteerSetupPage() {
                     </button>
                   ))}
                 </div>
-                <p className={styles.hint}>Virtual sessions use Google Meet or Zoom; face-to-face sessions are on campus.</p>
+                <p className={styles.hint}>Online sessions use Google Meet or Zoom; in-person sessions are on campus.</p>
               </section>
 
               <section className={styles.section}>
